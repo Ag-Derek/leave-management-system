@@ -3176,6 +3176,25 @@ transition it brings is into `SUBMITTED` from outside `leave_request` altogether
 
 ---
 
+### Changing the dates of a request
+
+**Dates change only while nobody has decided anything, at any stage.** Any leave type, by the
+person or by HR on their behalf. Once a desk has recorded a decision the dates are fixed:
+withdraw and ask again, or, once approved, ask HR to take it off the books.
+
+**A change is a new request, not an edit.** `leave_request_says_what_it_said` still holds. In
+one transaction the old request is withdrawn and its days released, the new one is written with
+`replaces_request_id` naming it, its files move across, and the new days are held. The old days
+are released first, so somebody with exactly enough can move them.
+
+**The database holds the shape.** `leave_request_replaces_one_it_ended` requires the replaced
+request to be the same person's, the same type, and withdrawn by commit;
+`leave_request_replaces_what_it_replaced` makes the link write-once. A file may move only from a
+request to its replacement, keeping its slot, and a request whose files followed it is no longer
+owed evidence. The history shows the replacement once, with the dates it changed from.
+
+---
+
 ### A request saved and finished later
 
 **Saved without entering the workflow, and editable while in draft only.** FR 19.

@@ -128,6 +128,26 @@ export class AttachmentRepository {
     return bound;
   }
 
+  /** How many decisions any desk has recorded on a request. A file comes off only before the first. */
+  async decisionsOn(leaveRequestId: string): Promise<number> {
+    const row = await this.db
+      .selectFrom('leave_request_decision')
+      .where('leave_request_id', '=', leaveRequestId)
+      .select((eb) => eb.fn.countAll<string>().as('decisions'))
+      .executeTakeFirstOrThrow();
+
+    return Number(row.decisions);
+  }
+
+  /** Moves every file on a request to the one replacing it, each keeping its slot. */
+  async moveToReplacement(fromRequestId: string, toRequestId: string): Promise<void> {
+    await this.db
+      .updateTable('leave_request_attachment')
+      .set({ leave_request_id: toRequestId })
+      .where('leave_request_id', '=', fromRequestId)
+      .execute();
+  }
+
   async findById(id: string): Promise<LeaveRequestAttachment | undefined> {
     const row = await this.db
       .selectFrom('leave_request_attachment')

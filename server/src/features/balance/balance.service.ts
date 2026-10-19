@@ -42,8 +42,10 @@ import {
   certifiedDaysIn,
   decisionTo,
   isTheLastWord,
+  LeaveCannotBeChanged,
   type LeaveRequest,
   LeaveRequestNotFound,
+  mayChangeDates,
   recalculationTo,
   reclassificationTo,
   type ReleasingAction,
@@ -177,6 +179,21 @@ export interface RequestToSettle {
   to: ReleasingStatus;
   /** FR 27. */
   reason: string;
+}
+
+/** What `LeaveRequestService` supplies to change a request's dates. */
+export interface RequestToReplace {
+  /** The request being changed, as the caller read it. */
+  replacing: LeaveRequest;
+  /** FR 27. The sentence on the old request's `RELEASE`. */
+  releaseReason: string;
+  /** The new request. Its evidence is the old one's files, moved across. */
+  next: Omit<RequestToSubmit, 'evidence'>;
+}
+
+/** The new request, the days it holds, and the old one it ended. */
+export interface LeaveReplaced extends LeaveRequested {
+  replaced: LeaveRequest;
 }
 
 /** What `LeaveRequestService` supplies to decide one. FR 38a, FR 40, FR 44. */
@@ -462,6 +479,106 @@ export class BalanceService {
         request: written,
         entry,
         balance: withAvailable(await repositories.balances.forOne(key)),
+      };
+    });
+  }
+
+  /**
+   * Changes a request's dates: withdraws it and writes its replacement in one transaction.
+   *
+   * The old days come back before the new ones are held, so a person with exactly enough
+   * can move their leave. The files move across, and the price of neither request is rewritten.
+   */
+  async replaceRequest(actor: Actor, replacement: RequestToReplace): Promise<LeaveReplaced> {
+    const { replacing, releaseReason, next } = replacement;
+    const owner = await this.ownerOf(replacing.employeeId);
+
+    this.guard.enforce(ledgerPolicy.release(actor, owner));
+    this.guard.enforce(ledgerPolicy.reserve(actor, owner));
+
+    const oldKey = keyOf(replacing);
+    const newKey = keyOf(next.request);
+
+    return this.transactions.allOrNothing(async (repositories) => {
+      // Both balances in one fixed order, so two changes cannot deadlock.
+      for (const key of [oldKey, newKey].sort((a, b) =>
+        a.leaveYearId.localeCompare(b.leaveYearId),
+      )) {
+        await repositories.balances.holdStill(key);
+      }
+
+      const current = await repositories.requests.holdStill(replacing.id);
+
+      if (current === undefined) {
+        throw new LeaveRequestNotFound(replacing.id);
+      }
+
+      // Asked again under the lock: a desk may have decided while the form was open.
+      const decided = (await repositories.decisions.forRequest(current.id)).length;
+
+      if (!mayChangeDates(current, decided)) {
+        throw new LeaveCannotBeChanged(current);
+      }
+
+      const released = await repositories.requests.moveTo(
+        actor,
+        current.id,
+        settlementTo(current, 'WITHDRAW'),
+        null,
+      );
+
+      if (released === undefined) {
+        throw new LeaveRequestNotFound(current.id);
+      }
+
+      await repositories.entries.post(
+        actor,
+        validateNewLedgerEntry({
+          ...oldKey,
+          entryType: 'RELEASE',
+          days: daysToRelease(await repositories.balances.holdStill(oldKey), current.days),
+          certifiedDays: current.certifiedDays,
+          reason: releaseReason,
+          leaveRequestId: current.id,
+        }),
+      );
+
+      // Read after the release, so the days it gave back count towards the new ones.
+      const held = await repositories.balances.holdStill(newKey);
+      const type = await repositories.types.findById(next.request.leaveTypeId);
+
+      if (type === undefined) {
+        throw new LeaveTypeNotFound(next.request.leaveTypeId);
+      }
+
+      const days = daysToReserve(
+        held,
+        next.request.days,
+        type.exceedableWithDocument || type.entitlementBasis === 'EVENT',
+      );
+
+      const written = await repositories.requests.submit(actor, next.request, current.id);
+
+      await repositories.routing.record(actor, written.id, next.request.skips);
+      await repositories.attachments.moveToReplacement(current.id, written.id);
+
+      const entry = await repositories.entries.post(
+        actor,
+        validateNewLedgerEntry({
+          ...newKey,
+          entryType: 'RESERVATION',
+          days: -days,
+          certifiedDays: written.certifiedDays,
+          reason: next.reason,
+          leaveRequestId: written.id,
+        }),
+      );
+
+      return {
+        request: written,
+        replaced: released,
+        entry,
+        balance: withAvailable(await repositories.balances.forOne(newKey)),
       };
     });
   }

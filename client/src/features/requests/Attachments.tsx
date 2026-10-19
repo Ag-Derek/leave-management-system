@@ -3,6 +3,8 @@ import {
   type Attachment,
   type Attachments,
   attachmentsOn,
+  attachToRequest,
+  removeAttachment,
   discardEvidence,
   type EvidenceWaiting,
   evidenceWaiting,
@@ -48,14 +50,50 @@ import { Notice, type Problem, problemFrom } from '../../problem';
  */
 export function AttachedFiles({
   requestId,
+  canAttach = false,
+  canRemove = false,
+  startOpen = false,
   onSignedOut,
 }: {
   requestId: string;
+  /** Offer an upload: the request is still live and this person may add to it. */
+  canAttach?: boolean;
+  /** Offer to take a file off: nobody has decided the request yet. */
+  canRemove?: boolean;
+  /** Open from the start, where opening it was already the point, as in Edit. */
+  startOpen?: boolean;
   onSignedOut: () => void;
 }) {
   const [held, setHeld] = useState<Attachments | undefined>(undefined);
   const [problem, setProblem] = useState<Problem | undefined>(undefined);
-  const [opened, setOpened] = useState(false);
+  const [opened, setOpened] = useState(startOpen);
+  const [uploading, setUploading] = useState(false);
+
+  const add = (file: File) => {
+    const refused = tooLarge(file);
+
+    if (refused !== undefined) {
+      setProblem(refused);
+      return;
+    }
+
+    setUploading(true);
+    setProblem(undefined);
+
+    attachToRequest(requestId, file)
+      .then(look)
+      .catch((error: unknown) => {
+        if (isNotSignedIn(error)) {
+          onSignedOut();
+          return;
+        }
+
+        setProblem(problemFrom(error));
+      })
+      .finally(() => {
+        setUploading(false);
+      });
+  };
 
   const look = useCallback(() => {
     attachmentsOn(requestId)
@@ -82,6 +120,7 @@ export function AttachedFiles({
   return (
     <details
       className="attachments"
+      open={opened}
       onToggle={(event) => {
         setOpened(event.currentTarget.open);
       }}
@@ -107,10 +146,51 @@ export function AttachedFiles({
                 key={attachment.attachmentId}
                 requestId={requestId}
                 attachment={attachment}
+                onRemove={
+                  canRemove
+                    ? () =>
+                        removeAttachment(requestId, attachment.attachmentId)
+                          .then(look)
+                          .catch((error: unknown) => {
+                            if (isNotSignedIn(error)) {
+                              onSignedOut();
+                              return;
+                            }
+
+                            // The server's sentence: the last certificate, or a desk has decided.
+                            setProblem(problemFrom(error));
+                          })
+                    : undefined
+                }
                 onSignedOut={onSignedOut}
               />
             ))}
           </ul>
+
+          {canAttach && held.attachments.length < MAX_ATTACHMENTS_PER_REQUEST ? (
+            <label className="add-file">
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.docx"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+
+                  // Cleared so the same file can be chosen again after a refusal.
+                  event.target.value = '';
+
+                  if (file !== undefined) {
+                    add(file);
+                  }
+                }}
+              />
+              <Icon name="upload" />
+              {uploading ? 'Uploading…' : 'Add a file'}
+              <small className="muted">
+                PDF, JPG, PNG or DOCX, up to {megabytes(MAX_ATTACHMENT_BYTES)}
+              </small>
+            </label>
+          ) : null}
         </>
       )}
     </details>
@@ -121,12 +201,17 @@ export function AttachedFiles({
 function FileOnARequest({
   requestId,
   attachment,
+  onRemove,
   onSignedOut,
 }: {
   requestId: string;
   attachment: Attachment;
+  /** Offered while nobody has decided the request. Resolves once it is gone. */
+  onRemove?: () => Promise<void>;
   onSignedOut: () => void;
 }) {
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [opening, setOpening] = useState(false);
   const [refusal, setRefusal] = useState<Problem | undefined>(undefined);
   const [preview, setPreview] = useState<string | undefined>(undefined);
@@ -250,6 +335,45 @@ function FileOnARequest({
         <span className="tag flag">Being checked for viruses</span>
       )}
 
+      {onRemove === undefined ? null : confirmingRemove ? (
+        <span className="file-remove">
+          <button
+            type="button"
+            className="linkish is-danger"
+            disabled={removing}
+            onClick={() => {
+              setRemoving(true);
+              void onRemove().finally(() => {
+                setRemoving(false);
+                setConfirmingRemove(false);
+              });
+            }}
+          >
+            {removing ? 'Removing…' : 'Yes, remove'}
+          </button>
+          <button
+            type="button"
+            className="linkish"
+            disabled={removing}
+            onClick={() => {
+              setConfirmingRemove(false);
+            }}
+          >
+            Keep
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="linkish is-danger"
+          onClick={() => {
+            setConfirmingRemove(true);
+          }}
+        >
+          Remove
+        </button>
+      )}
+
       {/* NFR SEC 04. A link is meant to stop working, so the retry is the whole
           answer here: asking again mints a new one. */}
       {refusal === undefined ? null : (
@@ -338,6 +462,13 @@ export function Evidence({
   /** Uploads, then re-reads: what is waiting is the server's answer, not a list kept here. */
   const upload = useCallback(
     (file: File) => {
+      const refused = tooLarge(file);
+
+      if (refused !== undefined) {
+        setProblem(refused);
+        return;
+      }
+
       setBusy(true);
 
       holdEvidence(file)
@@ -484,4 +615,18 @@ function save({ blob, filename }: { blob: Blob; filename: string }): void {
 
 function megabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
+}
+
+/** Said before uploading rather than after: the server refuses it either way. FR 12. */
+function tooLarge(file: File): Problem | undefined {
+  return file.size <= MAX_ATTACHMENT_BYTES
+    ? undefined
+    : {
+        what:
+          `That file is ${megabytes(file.size)} and the limit is ` +
+          `${megabytes(MAX_ATTACHMENT_BYTES)} per file. Scanning at a lower resolution, or ` +
+          'saving as PDF, usually brings it down.',
+        field: undefined,
+        worthRetrying: false,
+      };
 }

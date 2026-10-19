@@ -133,6 +133,10 @@ export interface RequestEntry {
   withdrawalAsked: boolean;
   /** The Chief Executive has reversed it. A reversal happens once. */
   reversed: boolean;
+  /** Nobody has decided anything yet, so its dates may still change. */
+  datesCanChange: boolean;
+  /** The dates it had before they were changed. */
+  changedFrom: { from: string; to: string } | null;
 }
 
 /** One request on the Chief Executive's page, and whose it is. */
@@ -2017,6 +2021,34 @@ export async function myRequests(leaveYearId?: string): Promise<History> {
   const query = leaveYearId === undefined ? '' : `?leaveYearId=${encodeURIComponent(leaveYearId)}`;
 
   return request<History>('GET', `/api/me/requests${query}`);
+}
+
+/** Somebody else's request history, for HR keeping their record. */
+export async function requestsOf(employeeId: string, leaveYearId?: string): Promise<History> {
+  const query = leaveYearId === undefined ? '' : `?leaveYearId=${encodeURIComponent(leaveYearId)}`;
+
+  return request<History>(
+    'GET',
+    `/api/employees/${encodeURIComponent(employeeId)}/requests${query}`,
+  );
+}
+
+/** What new dates for a request would cost, with its own days counted as back. */
+export async function quoteChange(requestId: string, from: string, to: string): Promise<Quote> {
+  const query = new URLSearchParams({ from, to });
+
+  return request<Quote>(
+    'GET',
+    `/api/requests/${encodeURIComponent(requestId)}/change/quote?${query.toString()}`,
+  );
+}
+
+/** Changes a request's dates while nobody has decided it. A new request replaces the old. */
+export async function changeRequestDates(
+  requestId: string,
+  change: { from: string; to: string; acknowledgesShortNotice: boolean },
+): Promise<void> {
+  await request<unknown>('POST', `/api/requests/${encodeURIComponent(requestId)}/change`, change);
 }
 
 /**

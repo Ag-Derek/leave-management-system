@@ -52,8 +52,8 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
   const [form, setForm] = useState<RequestForm | undefined>(undefined);
   const [problem, setProblem] = useState<Problem | undefined>(undefined);
 
-  const [leaveTypeId, setLeaveTypeId] = useState('');
-  const [from, setFrom] = useState('');
+  const [leaveTypeId, setLeaveTypeId] = useState(() => prefilled('leaveTypeId'));
+  const [from, setFrom] = useState(() => prefilled('from'));
   const [to, setTo] = useState('');
   const [reason, setReason] = useState('');
   /** FR 17. Answered about one period, so it is cleared whenever the period moves. */
@@ -761,4 +761,11 @@ function placeholderFor(type: RequestableLeaveType | undefined): string {
   return type.reasonRequired
     ? `What this leave is for, enough that ${type.approvedBy} can decide on it`
     : `Anything ${type.approvedBy} should know. Leave it blank if there is nothing`;
+}
+
+/** A value the address carries, as `#/ask?leaveTypeId=…&from=…` from extending sick leave. */
+function prefilled(name: 'leaveTypeId' | 'from'): string {
+  const query = window.location.hash.split('?')[1] ?? '';
+
+  return new URLSearchParams(query).get(name) ?? '';
 }

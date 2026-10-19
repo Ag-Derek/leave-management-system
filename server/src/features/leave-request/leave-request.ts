@@ -123,6 +123,38 @@ export class LeaveAlreadySettled extends Error {
 }
 
 /**
+ * A request whose dates may no longer change.
+ *
+ * Dates change only while nobody has decided anything, at any stage. After that the
+ * request is withdrawn and asked for again, or, once approved, HR takes it off the books.
+ */
+export class LeaveCannotBeChanged extends Error {
+  readonly code = 'CANNOT_CHANGE';
+  readonly leaveRequestId: string;
+  readonly status: RequestStatus;
+
+  constructor(request: LeaveRequest) {
+    super(
+      isSettled(request.status)
+        ? 'This request has already ended, so there are no dates to change. Ask for the leave again.'
+        : request.status === 'APPROVED'
+          ? 'This leave has been approved, so its dates can no longer be changed. Ask HR to ' +
+            'take it off the books, then ask for the new dates.'
+          : 'An approver has already responded to this request, so its dates can no longer be ' +
+            'changed. Withdraw it and ask for the new dates instead.',
+    );
+    this.name = 'LeaveCannotBeChanged';
+    this.leaveRequestId = request.id;
+    this.status = request.status;
+  }
+}
+
+/** Whether a request's dates may still change: live, and undecided at every stage. */
+export function mayChangeDates(request: LeaveRequest, decisionsRecorded: number): boolean {
+  return UNDECIDED_STATUSES.includes(request.status) && decisionsRecorded === 0;
+}
+
+/**
  * A move the table does not hold, on a request that has not ended. §6.
  *
  * The refusal `APPROVED` made necessary, and it exists because the sentence
@@ -1371,6 +1403,8 @@ export interface LeaveRequest {
    * `leave_request_says_when_one_person_decided_it`.
    */
   decidedBySingleApprover: boolean;
+  /** The request this one changed the dates of. Optional so made-up requests need not say. */
+  replacesRequestId?: string | null;
   submittedAt: Date;
   createdAt: Date;
   updatedAt: Date;

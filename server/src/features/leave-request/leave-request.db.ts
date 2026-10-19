@@ -85,14 +85,18 @@ export interface LeaveRequestListOptions {
 export class LeaveRequestRepository {
   constructor(private readonly db: Kysely<Database>) {}
 
-  /** Writes a request. */
-  async submit(by: Attribution, request: ValidatedLeaveRequest): Promise<LeaveRequest> {
+  /** Writes a request, naming the one it replaces where it is a change of dates. */
+  async submit(
+    by: Attribution,
+    request: ValidatedLeaveRequest,
+    replaces?: string,
+  ): Promise<LeaveRequest> {
     return this.catchRefusals(
       async () => {
         const row = await recording(this.db, by, (on) =>
           on
             .insertInto('leave_request')
-            .values(rowFor(request))
+            .values({ ...rowFor(request), replaces_request_id: replaces ?? null })
             .returningAll()
             .executeTakeFirstOrThrow(),
         );
@@ -569,6 +573,7 @@ function toRequest(row: LeaveRequestRow): LeaveRequest {
     awaitingApprovalFrom: row.awaiting_approval_from as ApproverRole | null,
     /** FR 48d. */
     decidedBySingleApprover: row.decided_by_a_single_approver,
+    replacesRequestId: row.replaces_request_id,
     submittedAt: row.submitted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

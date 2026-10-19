@@ -75,6 +75,14 @@ export function day(iso: string): string {
     : `${String(dayOfMonth)} ${month} ${iso.slice(0, 4)}`;
 }
 
+/** The calendar day after this one, worked in UTC so no zone can move it. */
+export function dayAfter(iso: string): string {
+  const [year, month, dayOfMonth] = iso.split('-').map(Number);
+  const next = new Date(Date.UTC(year, month - 1, dayOfMonth + 1));
+
+  return next.toISOString().slice(0, 10);
+}
+
 /**
  * Two of them as one period, with whatever they share said once.
  *

@@ -2,6 +2,7 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import { NOT_AUTHORISED_MESSAGE, NotAuthorised } from '../auth/policy.js';
+import { AttachmentTooLarge } from '../features/leave-request/attachment.js';
 
 /** The body every refusal has. */
 export interface Problem {
@@ -54,6 +55,14 @@ export function problemFor(error: unknown): { status: number; body: Problem } {
 
   if (!(error instanceof Error)) {
     return unexpected();
+  }
+
+  /* FR 12. An upload over the cap is refused by the body parser before any route sees it,
+     so it carries the parser's own shape. Answered with the sentence the cap already has. */
+  if ((error as { type?: unknown }).type === 'entity.too.large') {
+    const tooLarge = new AttachmentTooLarge(Number((error as { length?: unknown }).length) || 0);
+
+    return { status: 413, body: { error: tooLarge.name, message: tooLarge.message } };
   }
 
   /* Somebody's own record, named by an id they supplied. The id is never echoed and the
@@ -280,6 +289,8 @@ const REFUSED_BY_A_RULE: Readonly<Record<string, number>> = {
   LeaveAlreadySettled: 409,
   /** §6. The request has moved somewhere this act does not follow from. */
   LeaveCannotBeMoved: 409,
+  /** Its dates are fixed once anybody has decided anything. */
+  LeaveCannotBeChanged: 409,
 
   /** FR 15, §5.6. Leave over leave already booked. */
   LeaveOverlapsAnother: 409,

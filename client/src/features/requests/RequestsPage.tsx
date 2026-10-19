@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   askToCancel,
   type Desk,
@@ -7,18 +7,36 @@ import {
   myRequests,
   myRequestsExportPath,
   type RequestEntry,
+  requestsOf,
   type TrailStep,
   withdrawRequest,
   type Year,
 } from '../../api';
 import { ExportButtons } from '../../ExportButtons';
-import { inDays, moment, period, sentenceCase, statusLabel } from '../../format';
+import { dayAfter, inDays, moment, period, sentenceCase, statusLabel } from '../../format';
 import { Icon, iconForLeaveType } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { AttachedFiles } from './Attachments';
+import { ChangeDates } from './ChangeDates';
 
 /** My request history. FR 54, FR 41, FR 39. */
 export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
+  return (
+    <div className="page">
+      <RequestHistory onSignedOut={onSignedOut} />
+    </div>
+  );
+}
+
+/** A request history: mine, or with `employeeId`, somebody's HR is keeping the record of. */
+export function RequestHistory({
+  employeeId,
+  onSignedOut,
+}: {
+  employeeId?: string;
+  onSignedOut: () => void;
+}) {
+  const own = employeeId === undefined;
   const [history, setHistory] = useState<History | undefined>(undefined);
   const [problem, setProblem] = useState<Problem | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -30,7 +48,7 @@ export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
       setLoading(true);
       setShowing(leaveYearId);
 
-      myRequests(leaveYearId)
+      (employeeId === undefined ? myRequests(leaveYearId) : requestsOf(employeeId, leaveYearId))
         .then((next) => {
           setHistory(next);
           setProblem(undefined);
@@ -48,7 +66,7 @@ export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
           setLoading(false);
         });
     },
-    [onSignedOut],
+    [employeeId, onSignedOut],
   );
 
   useEffect(() => {
@@ -60,19 +78,15 @@ export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
   };
 
   if (history === undefined) {
-    return (
-      <div className="page">
-        {loading ? (
-          <Skeletons />
-        ) : problem === undefined ? null : (
-          <Notice problem={problem} retrying={loading} onRetry={again} />
-        )}
-      </div>
+    return loading ? (
+      <Skeletons />
+    ) : problem === undefined ? null : (
+      <Notice problem={problem} retrying={loading} onRetry={again} />
     );
   }
 
   return (
-    <div className="page">
+    <>
       <div className="pagehead">
         <p className="muted">{counted(history)}</p>
 
@@ -86,12 +100,14 @@ export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
             }}
           />
 
-          {/* FR 64. */}
-          <ExportButtons
-            path={myRequestsExportPath(history.year?.id)}
-            onSignedOut={onSignedOut}
-            onProblem={setProblem}
-          />
+          {/* FR 64. The export is of your own requests. */}
+          {own ? (
+            <ExportButtons
+              path={myRequestsExportPath(history.year?.id)}
+              onSignedOut={onSignedOut}
+              onProblem={setProblem}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -102,20 +118,21 @@ export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
       )}
 
       {history.entries.length === 0 ? (
-        <Nothing year={history.year} />
+        <Nothing year={history.year} own={own} />
       ) : (
         <ol className="requests">
           {history.entries.map((entry) => (
             <RequestCard
               key={entry.requestId}
               entry={entry}
+              own={own}
               onSignedOut={onSignedOut}
               onWithdrawn={again}
             />
           ))}
         </ol>
       )}
-    </div>
+    </>
   );
 }
 
@@ -132,13 +149,51 @@ export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
  */
 function RequestCard({
   entry,
+  own,
   onSignedOut,
   onWithdrawn,
 }: {
   entry: RequestEntry;
+  /** The reader's own leave, rather than HR looking at somebody's. */
+  own: boolean;
   onSignedOut: () => void;
   onWithdrawn: () => void;
 }) {
+  const [changing, setChanging] = useState(false);
+  const live = LIVE.includes(entry.status);
+  const extendable = own && live && isSick(entry);
+
+  /* The buttons that sit left of Withdraw, or on their own where there is no Withdraw. */
+  const leading =
+    entry.datesCanChange || extendable ? (
+      <>
+        {entry.datesCanChange ? (
+          <button
+            type="button"
+            className="edit-button"
+            onClick={() => {
+              setChanging(true);
+            }}
+          >
+            <Icon name="pencil" />
+            Edit
+          </button>
+        ) : null}
+
+        {/* More sick days straight after these: a new request, on its own certificate where
+            the allowance asks for one. */}
+        {extendable ? (
+          <a
+            className="button-link"
+            href={`#/ask?leaveTypeId=${encodeURIComponent(entry.leaveTypeId)}&from=${dayAfter(entry.to)}`}
+          >
+            <Icon name="plus" />
+            Extend
+          </a>
+        ) : null}
+      </>
+    ) : null;
+
   return (
     <li className={`card request is-${entry.status.toLowerCase()}`}>
       {/* What was asked for on the left, how it got where it is on the right — so
@@ -173,6 +228,12 @@ function RequestCard({
             {entry.countingBasisLabel.toLowerCase()}
           </p>
 
+          {entry.changedFrom === null ? null : (
+            <p className="muted changed-from">
+              Dates changed from {period(entry.changedFrom.from, entry.changedFrom.to)}.
+            </p>
+          )}
+
           {/* What they said when they asked. Quoted, because it is somebody's own words and an
               approver decided on them — the same reason the comments are quoted. Nothing at
               all where the type asked for none. FR 10. */}
@@ -189,7 +250,23 @@ function RequestCard({
 
           {/* FR 12, NFR SEC 04. Shut, and asked for only when it is opened: a list of
               filenames is itself information about somebody's health. */}
-          <AttachedFiles requestId={entry.requestId} onSignedOut={onSignedOut} />
+          <AttachedFiles requestId={entry.requestId} canAttach={live} onSignedOut={onSignedOut} />
+
+          {changing ? (
+            <ChangeDates
+              entry={entry}
+              onChanged={() => {
+                setChanging(false);
+                onWithdrawn();
+              }}
+              onClose={() => {
+                setChanging(false);
+                // Files may have been added in the dialog, so the card reads them again.
+                onWithdrawn();
+              }}
+              onSignedOut={onSignedOut}
+            />
+          ) : null}
 
           {/* Normally empty. A chain that has gained a desk since a request was approved is a
               real and legitimate state — `stagesMissing` — and saying so is better
@@ -198,19 +275,27 @@ function RequestCard({
             <p className="muted">Agreed under an earlier approval policy.</p>
           ) : null}
 
-          {/* FR 26. Only while the last desk has still to decide: a manager may already
-              have answered, but it is not settled until it leaves SUBMITTED. */}
+          {/* FR 26. Withdraw only while the last desk has still to decide: a manager may
+              already have answered, but it is not settled until it leaves SUBMITTED. Edit and
+              Extend sit to its left. */}
           {entry.status === 'SUBMITTED' ? (
             <Withdraw
               requestId={entry.requestId}
+              own={own}
+              leading={leading}
               onSignedOut={onSignedOut}
               onWithdrawn={onWithdrawn}
             />
-          ) : null}
+          ) : leading === null ? null : (
+            <div className="withdraw">
+              <div className="withdraw-buttons">{leading}</div>
+            </div>
+          )}
 
           {/* FR 47. Approved leave is not taken back but asked about: the days are spent,
-              so HR answers. One open ask at a time, which the server holds as well. */}
-          {entry.status === 'APPROVED' ? (
+              so HR answers. One open ask at a time, which the server holds as well. Only the
+              person asks; HR is who answers. */}
+          {own && entry.status === 'APPROVED' ? (
             entry.withdrawalAsked ? (
               <p className="notice plain">
                 You have asked HR to cancel this. They have not answered yet.
@@ -300,10 +385,15 @@ function deskLabel(desk: Desk): string {
  */
 function Withdraw({
   requestId,
+  own,
+  leading,
   onSignedOut,
   onWithdrawn,
 }: {
   requestId: string;
+  own: boolean;
+  /** Buttons drawn to the left of Withdraw, and out of the way while confirming. */
+  leading: ReactNode;
   onSignedOut: () => void;
   onWithdrawn: () => void;
 }) {
@@ -338,7 +428,8 @@ function Withdraw({
       {confirming ? (
         <>
           <p className="muted">
-            Withdraw this request? The days go back to your balance, and it can’t be undone.
+            Withdraw this request? The days go back to {own ? 'your' : 'their'} balance, and it
+            can’t be undone.
           </p>
           <div className="withdraw-buttons">
             <button type="button" className="danger" disabled={busy} onClick={withdraw}>
@@ -357,15 +448,18 @@ function Withdraw({
           </div>
         </>
       ) : (
-        <button
-          type="button"
-          className="danger"
-          onClick={() => {
-            setConfirming(true);
-          }}
-        >
-          Withdraw request
-        </button>
+        <div className="withdraw-buttons">
+          {leading}
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              setConfirming(true);
+            }}
+          >
+            Withdraw
+          </button>
+        </div>
       )}
     </div>
   );
@@ -576,17 +670,28 @@ function YearFilter({
  * Somebody who has never asked for leave gets the other sentence, and it does not apologise:
  * it is a perfectly ordinary state and it is the first thing a new joiner sees.
  */
-function Nothing({ year }: { year: Year | null }) {
+function Nothing({ year, own }: { year: Year | null; own: boolean }) {
   return (
     /* `plain`, because nothing is wrong. The warning stripe on a notice is for a refusal the
        server sent, and an empty history is an answer. */
     <p className="notice plain">
       {year === null
-        ? 'You have not asked for any leave yet. When you do, every request will be here with ' +
-          'what each approver said about it.'
-        : `You asked for no leave in ${year.label}. Choose "All years" above to see everything.`}
+        ? own
+          ? 'You have not asked for any leave yet. When you do, every request will be here with ' +
+            'what each approver said about it.'
+          : 'They have not asked for any leave yet.'
+        : `${own ? 'You' : 'They'} asked for no leave in ${year.label}. Choose "All years" above ` +
+          'to see everything.'}
     </p>
   );
+}
+
+/** Still running: waiting on a desk, unroutable, or approved. */
+const LIVE: readonly RequestEntry['status'][] = ['SUBMITTED', 'UNROUTABLE', 'APPROVED'];
+
+/** Matched on the name, as the icons are: HR names its own leave types. */
+function isSick(entry: RequestEntry): boolean {
+  return iconForLeaveType(entry.typeName) === 'sick';
 }
 
 /* The shape of the answer while it is on its way, rather than a spinner that says nothing

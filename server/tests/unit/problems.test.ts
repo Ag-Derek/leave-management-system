@@ -48,3 +48,18 @@ describe('what a refusal says', () => {
   /** The one leave type this file needs, and only the fields a refusal reads off one. */
   const annualLeave = { id: 'annual', name: 'Annual Leave' } as LeaveType;
 });
+
+describe('an upload over the cap', () => {
+  it('is a 413 with the sentence the cap has, not a fault', () => {
+    const fromTheParser = Object.assign(new Error('request entity too large'), {
+      type: 'entity.too.large',
+      length: 15 * 1024 * 1024,
+    });
+
+    const { status, body } = problemFor(fromTheParser);
+
+    expect(status).toBe(413);
+    expect(body.error).toBe('AttachmentTooLarge');
+    expect(body.message).toContain('the limit is');
+  });
+});

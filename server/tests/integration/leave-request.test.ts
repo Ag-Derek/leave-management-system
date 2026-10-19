@@ -18,6 +18,7 @@ import {
   DocumentationNotAttached,
   InvalidLeaveRequest,
   LeaveAlreadySettled,
+  LeaveCannotBeChanged,
   LeaveCountsNoDays,
   LeaveCrossesAYearEnd,
   LeaveOverlapsAnother,
@@ -4964,4 +4965,122 @@ describe('taking back a request nobody has approved yet', () => {
 
     await admin.query('COMMIT');
   }
+});
+
+/* --------------------------------------------------- changing the dates of a request */
+
+describe('changing the dates of a request nobody has decided', () => {
+  const LATER = { from: '2026-03-16', to: '2026-03-20', acknowledgesShortNotice: true };
+
+  function asHrAdministrator() {
+    return signedInAs(people.headOfHr, { roles: ['EMPLOYEE', 'HR_ADMIN'], isManager: true });
+  }
+
+  it('writes the new dates in place of the old, and holds only the new days', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+
+    const changed = await requests.change(asThemselves(), request.id, LATER);
+
+    expect(changed.replaced).toMatchObject({ id: request.id, status: 'WITHDRAWN' });
+    expect(changed.request).toMatchObject({
+      from: LATER.from,
+      to: LATER.to,
+      status: 'SUBMITTED',
+      replacesRequestId: request.id,
+      reason: 'My sister is getting married',
+    });
+    expect(changed.balance.pending).toBe(changed.request.days);
+    expect(changed.balance.available).toBe(20 - changed.request.days);
+  });
+
+  it('may land on the dates it is leaving', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+
+    const changed = await requests.change(asThemselves(), request.id, {
+      from: '2026-03-03',
+      to: TO,
+      acknowledgesShortNotice: true,
+    });
+
+    expect(changed.request.days).toBe(5);
+  });
+
+  it('counts the days it held, so somebody with exactly enough can move them', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+
+    await balances.adjust(asHrAdministrator(), {
+      employeeId: people.officer,
+      leaveTypeId: annualId,
+      leaveYearId: y2026.id,
+      days: -14,
+      reason: 'Leave taken before go live',
+    });
+
+    const changed = await requests.change(asThemselves(), request.id, LATER);
+
+    expect(changed.balance.available).toBe(6 - changed.request.days);
+  });
+
+  it('prices new dates the same way', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+
+    const quote = await requests.quoteChange(asThemselves(), request.id, LATER);
+
+    expect(quote.availableAfter).toBe(20 - quote.days);
+  });
+
+  it('is refused once any desk has decided, even part way along the chain', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+    await requests.approve(asTheirManager(), request.id);
+
+    await expect(requests.change(asThemselves(), request.id, LATER)).rejects.toBeInstanceOf(
+      LeaveCannotBeChanged,
+    );
+  });
+
+  it('is refused once the request has ended', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+    await requests.withdraw(asThemselves(), request.id);
+
+    await expect(requests.change(asThemselves(), request.id, LATER)).rejects.toBeInstanceOf(
+      LeaveCannotBeChanged,
+    );
+  });
+
+  it('is HR’s to make on somebody’s behalf, and not a colleague’s', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+
+    await expect(requests.change(asAColleague(), request.id, LATER)).rejects.toBeInstanceOf(
+      NotAuthorised,
+    );
+
+    const changed = await requests.change(asOfficer(), request.id, LATER);
+
+    expect(changed.request.from).toBe(LATER.from);
+  });
+
+  it('takes its certificate across, so evidence it was allowed on stays with the leave', async () => {
+    const { request } = await requests.submit(
+      asThemselves(),
+      aRequest({ leaveTypeId: sickId, evidence: [await aCertificateFor(people.officer)] }),
+    );
+    expect(request.evidenceRequired).toBe(true);
+
+    const changed = await requests.change(asThemselves(), request.id, LATER);
+
+    expect(changed.request.evidenceRequired).toBe(true);
+    expect(await attachments.forRequest(changed.request.id)).toHaveLength(1);
+    expect(await attachments.forRequest(request.id)).toHaveLength(0);
+  });
+
+  it('cannot afterwards be pointed at some other request', async () => {
+    const { request } = await requests.submit(asThemselves(), aRequest());
+    const changed = await requests.change(asThemselves(), request.id, LATER);
+
+    await expect(
+      admin.query('UPDATE leave_request SET replaces_request_id = NULL WHERE id = $1', [
+        changed.request.id,
+      ]),
+    ).rejects.toMatchObject({ constraint: 'leave_request_replaces_what_it_replaced' });
+  });
 });

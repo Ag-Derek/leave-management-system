@@ -20,6 +20,7 @@ export type HrSectionId =
   | 'adjustments'
   | 'leave-events'
   | 'leavers'
+  | 'staff-leave'
   | 'policy'
   | 'email-wording'
   | 'reports'
@@ -65,6 +66,12 @@ export const HR_GROUPS: { title: string; sections: HrSection[] }[] = [
   {
     title: "People's figures",
     sections: [
+      {
+        id: 'staff-leave',
+        label: 'Staff leave',
+        icon: 'requests',
+        description: 'Somebody’s requests: change dates, add a certificate, or withdraw one.',
+      },
       {
         id: 'adjustments',
         label: 'Adjustments',

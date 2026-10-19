@@ -47,6 +47,11 @@ export const HR_SECTIONS: Section[] = [
       ledgerPolicy.grantForAnEvent(actor, { employeeId: actor.employeeId ?? ANY, managerId: null }),
   },
   { id: 'leavers', may: (actor) => employeePolicy.list(actor) },
+  {
+    id: 'staff-leave',
+    // Entering leave for somebody else, which is what changing it on their behalf is.
+    may: (actor) => leaveRequestPolicy.submit(actor, { employeeId: ANY, managerId: null }),
+  },
   { id: 'policy', may: (actor) => organisationPolicy.changePolicy(actor) },
   { id: 'email-wording', may: (actor) => notificationPolicy.readWording(actor) },
   { id: 'reports', may: (actor) => reportPolicy.read(actor) },

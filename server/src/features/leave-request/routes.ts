@@ -353,6 +353,45 @@ export function requestRoutes({
       .catch(next);
   });
 
+  /** What new dates for a request would cost. Writes nothing. */
+  routes.get('/requests/:id/change/quote', (request: Request, response: Response, next) => {
+    void requests
+      .quoteChange(actorOf(response), asString(request.params.id), {
+        from: asString(request.query.from),
+        to: asString(request.query.to),
+      })
+      .then((quote) => {
+        response.json(quoteAsJson(quote));
+      })
+      .catch(next);
+  });
+
+  /**
+   * Changes the dates of a request nobody has decided, by the requester or HR.
+   *
+   * 201, because a new request is written in place of the old one, which is withdrawn.
+   */
+  routes.post('/requests/:id/change', (request: Request, response: Response, next) => {
+    const sent = bodyOf(request);
+
+    void requests
+      .change(actorOf(response), asString(request.params.id), {
+        from: asString(sent.from),
+        to: asString(sent.to),
+        /** FR 17. */
+        acknowledgesShortNotice: asAcknowledgement(sent.acknowledgesShortNotice),
+        /** FR 18. */
+        lateEntryReason: asString(sent.lateEntryReason),
+      })
+      .then((changed) => {
+        response.status(201).json({
+          ...(submittedAsJson(changed) as object),
+          replacedRequestId: changed.replaced.id,
+        });
+      })
+      .catch(next);
+  });
+
   /**
    * Asks for leave every desk has agreed to be taken off the books. FR 47.
    *
@@ -521,6 +560,18 @@ export function requestRoutes({
   routes.get('/me/requests', (request: Request, response: Response, next) => {
     void history
       .forEmployee(actorOf(response), employeeIdOf(response), {
+        leaveYearId: oneYearIn(request),
+      })
+      .then((found) => {
+        response.json(historyAsJson(found));
+      })
+      .catch(next);
+  });
+
+  /** One person's requests, for HR keeping their record. Refused by the same read rule. */
+  routes.get('/employees/:id/requests', (request: Request, response: Response, next) => {
+    void history
+      .forEmployee(actorOf(response), asString(request.params.id), {
         leaveYearId: oneYearIn(request),
       })
       .then((found) => {
@@ -1007,6 +1058,8 @@ function entryAsJson(entry: RequestHistoryEntry): unknown {
     /** FR 47. */
     withdrawalAsked: entry.withdrawalAsked,
     reversed: entry.reversed,
+    datesCanChange: entry.datesCanChange,
+    changedFrom: entry.changedFrom,
   };
 }
 

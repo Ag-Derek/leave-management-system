@@ -341,10 +341,13 @@ export class AttachmentsAreClosed extends Error {
 
   constructor(request: LeaveRequest, act: 'attach to' | 'remove from') {
     super(
-      `This leave has been ${request.status.toLowerCase()}, so there is nothing left to ` +
-        `${act === 'attach to' ? 'evidence' : 'take back'}. Files already on it stay on ` +
-        `it: what was attached while it was being decided is part of the record of why it ` +
-        `was decided that way. FR 12.`,
+      request.status === 'SUBMITTED'
+        ? 'An approver has already responded to this request, so its files stay on it: they ' +
+            'are part of what it is being decided on. You can still add another. FR 12.'
+        : `This leave has been ${request.status.toLowerCase()}, so there is nothing left to ` +
+            `${act === 'attach to' ? 'evidence' : 'take back'}. Files already on it stay on ` +
+            `it: what was attached while it was being decided is part of the record of why it ` +
+            `was decided that way. FR 12.`,
     );
     this.name = 'AttachmentsAreClosed';
     this.leaveRequestId = request.id;
@@ -355,10 +358,14 @@ export class AttachmentsAreClosed extends Error {
 export function assertAttachmentsAreOpen(
   request: LeaveRequest,
   act: 'attach to' | 'remove from',
+  /** Decisions recorded at any stage. Removing stops at the first, as changing dates does. */
+  decisionsRecorded = 0,
 ): void {
-  /* Attaching is refused once the leave has ended; removing is refused the moment a desk
-     could have read the file, which is anything past `SUBMITTED`. */
-  const closed = act === 'attach to' ? isSettled(request.status) : request.status !== 'SUBMITTED';
+  /* Attaching is refused once the leave has ended; removing once anybody has decided anything. */
+  const closed =
+    act === 'attach to'
+      ? isSettled(request.status)
+      : request.status !== 'SUBMITTED' || decisionsRecorded > 0;
 
   if (closed) {
     throw new AttachmentsAreClosed(request, act);

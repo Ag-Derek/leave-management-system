@@ -5048,3 +5048,126 @@ button.linkish.file-name {
 .data-table.is-figures td.overdrawn {
   color: var(--warn);
 }
+
+/* ------------------------------------------------- changing a request after asking */
+
+.request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.request-actions button,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* A link that does what a button does, drawn as one. */
+.button-link {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-small);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.button-link:hover {
+  border-color: var(--ink-faint);
+}
+
+.request-actions svg,
+.button-link svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.changed-from {
+  margin: 0.25rem 0 0;
+}
+
+/* The file input is the whole label, so a click anywhere on it opens the picker. */
+.add-file {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-small);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-file:hover,
+.add-file:focus-within {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.add-file input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.add-file svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.add-file small {
+  font-weight: 400;
+}
+
+.change-quote p {
+  margin: 0;
+}
+
+.change-quote .notice {
+  margin: 0.5rem 0 0;
+}
+
+/* A part of the edit dialog: the dates, then the files. */
+.edit-heading {
+  margin: 0;
+  font-family: var(--face-text);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.modal-body .edit-heading ~ .edit-heading {
+  margin-top: 0.5rem;
+  padding-top: var(--gap);
+  border-top: 1px solid var(--line);
+}
+
+.withdraw-buttons {
+  flex-wrap: wrap;
+}
+
+/* Taking a file back off, in the warning red the refusal buttons use. */
+.linkish.is-danger {
+  color: var(--warn);
+}
+
+.linkish.is-danger:hover:not(:disabled) {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, var(--card));
+}
+
+.file-remove {
+  display: inline-flex;
+  gap: 0.25rem;
+}

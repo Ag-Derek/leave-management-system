@@ -67,7 +67,9 @@ import {
   InvalidLeaveRequest,
   lateEntryFor,
   LeaveAlreadySettled,
+  LeaveCannotBeChanged,
   LeaveCannotBeMoved,
+  mayChangeDates,
   LeaveCrossesAYearEnd,
   type LeaveRequest,
   type LeaveRequestQuote,
@@ -140,9 +142,11 @@ import type {
   LeaveApproved,
   LeaveReclassified,
   LeaveReleased,
+  LeaveReplaced,
   LeaveRequested,
   LeaveRerouted,
   LeaveReversed,
+  RequestToReplace,
   RequestToSubmit,
   WithdrawalAnswered,
   WithdrawalAsked,
@@ -392,7 +396,87 @@ export class LeaveRequestService {
    * which of them got to say it.
    */
   async submit(actor: Actor, input: NewLeaveRequest): Promise<LeaveRequested> {
-    const { employee, type, year, period } = await this.resolve(actor, input);
+    return this.place(actor, input);
+  }
+
+  /**
+   * Changes the dates of a request nobody has decided, at any stage.
+   *
+   * The old request is withdrawn and a new one written in its place, in one transaction:
+   * every check a new request meets, with the old one's days and files counted as its own.
+   */
+  async change(
+    actor: Actor,
+    id: string,
+    input: Pick<NewLeaveRequest, 'from' | 'to' | 'acknowledgesShortNotice' | 'lateEntryReason'>,
+  ): Promise<LeaveReplaced> {
+    const existing = await this.requests.findById(id);
+
+    if (existing === undefined) {
+      throw new LeaveRequestNotFound(id);
+    }
+
+    const employee = await this.employeeFor(existing.employeeId);
+
+    // Taking it back and asking again, so both standings.
+    this.guard.enforce(leaveRequestPolicy.withdraw(actor, ownerOf(employee)));
+    this.guard.enforce(leaveRequestPolicy.submit(actor, ownerOf(employee)));
+
+    if (!mayChangeDates(existing, (await this.decisions.forRequest(existing.id)).length)) {
+      throw new LeaveCannotBeChanged(existing);
+    }
+
+    return this.place(
+      actor,
+      {
+        employeeId: existing.employeeId,
+        leaveTypeId: existing.leaveTypeId,
+        from: input.from,
+        to: input.to,
+        reason: existing.reason ?? undefined,
+        acknowledgesShortNotice: input.acknowledgesShortNotice,
+        lateEntryReason: input.lateEntryReason,
+      },
+      existing,
+    ) as Promise<LeaveReplaced>;
+  }
+
+  /** What a change of dates would cost, against the balance as if the old days were back. */
+  async quoteChange(
+    actor: Actor,
+    id: string,
+    input: Pick<NewLeaveRequest, 'from' | 'to'>,
+  ): Promise<LeaveRequestQuote> {
+    const existing = await this.byId(actor, id);
+
+    const quotable = {
+      employeeId: existing.employeeId,
+      leaveTypeId: existing.leaveTypeId,
+      from: input.from,
+      to: input.to,
+    };
+    const { employee, type, year, period } = await this.resolve(actor, quotable, existing.id);
+
+    const count = await this.countFor(actor, employee, type, period);
+
+    return quoteFor({
+      type,
+      period,
+      count,
+      availableNow:
+        (await this.availableFor(actor, employee, type, year)) + heldBack(existing, year),
+      daysOfNotice: noticeGiven(this.today(), period.from),
+      perOccasion: await this.perOccasionFor(employee, type, period.from),
+    });
+  }
+
+  /** Asks for leave, or, with `replacing`, asks for it in place of a request being changed. */
+  private async place(
+    actor: Actor,
+    input: NewLeaveRequest,
+    replacing?: LeaveRequest,
+  ): Promise<LeaveRequested> {
+    const { employee, type, year, period } = await this.resolve(actor, input, replacing?.id);
 
     this.guard.enforce(leaveRequestPolicy.submit(actor, ownerOf(employee)));
 
@@ -433,7 +517,9 @@ export class LeaveRequestService {
 
     /* Read once, and both of the next two rules are decided from it: what a person is
        refused on and what they are asked for evidence for are the same figure. */
-    const availableNow = await this.availableFor(actor, employee, type, year);
+    const availableNow =
+      (await this.availableFor(actor, employee, type, year)) +
+      (replacing === undefined ? 0 : heldBack(replacing, year));
 
     /* FR 14. The days, checked while the form is still open and against the
        same figure the quote showed. `daysToReserve` checks it again inside the lock and
@@ -452,7 +538,11 @@ export class LeaveRequestService {
        still open and the sentence can name what to upload — and held again by
        `leave_request_that_needed_evidence_has_it` as the transaction below commits. */
     const grounds = documentationGroundsFor({ type, days: count.days, availableNow });
-    const evidence = await this.evidenceWaitingFor(employee, input.evidence ?? []);
+    // A change brings the old request's files; a new request names what is waiting.
+    const evidence =
+      replacing === undefined
+        ? await this.evidenceWaitingFor(employee, input.evidence ?? [])
+        : await this.attachments.forRequest(replacing.id);
 
     assertDocumentationIsAttached({
       type,
@@ -498,15 +588,24 @@ export class LeaveRequestService {
       available,
     });
 
-    const submitted = await this.reserve(actor, type, period, {
-      request,
-      reason: reasonForReservation(type.name, period, count.days),
-      /* FR 13. The files go onto the request in the same transaction as the row,
-         which is what "the evidence arrives with the request" means when it is written down:
-         a request that needed documentation and a certificate that never reached it cannot
-         be two halves of one commit. */
-      evidence: evidence.map((file) => file.id),
-    });
+    const reason = reasonForReservation(type.name, period, count.days);
+
+    const submitted =
+      replacing === undefined
+        ? await this.reserve(actor, type, period, {
+            request,
+            reason,
+            /* FR 13. The files go onto the request in the same transaction as the row,
+               which is what "the evidence arrives with the request" means when it is written
+               down: a request that needed documentation and a certificate that never reached
+               it cannot be two halves of one commit. */
+            evidence: evidence.map((file) => file.id),
+          })
+        : await this.replace(actor, type, period, {
+            replacing,
+            releaseReason: `${reasonForRelease(type.name, replacing, replacing.days, 'WITHDRAWN')}: dates changed`,
+            next: { request, reason },
+          });
 
     /* FR 48b. Nobody can decide it, so HR is told rather than the request being refused —
        the leave is real and its days are held. */
@@ -551,6 +650,24 @@ export class LeaveRequestService {
   ): Promise<LeaveRequested> {
     try {
       return await this.balances.reserveForRequest(actor, submission);
+    } catch (error) {
+      if (error instanceof BalanceOverdrawn) {
+        throw new NotEnoughDays(type, period, error.requested, error.available);
+      }
+
+      throw error;
+    }
+  }
+
+  /** The same, for a change of dates. */
+  private async replace(
+    actor: Actor,
+    type: LeaveType,
+    period: LeavePeriod,
+    replacement: RequestToReplace,
+  ): Promise<LeaveReplaced> {
+    try {
+      return await this.balances.replaceRequest(actor, replacement);
     } catch (error) {
       if (error instanceof BalanceOverdrawn) {
         throw new NotEnoughDays(type, period, error.requested, error.available);
@@ -2102,6 +2219,8 @@ export class LeaveRequestService {
        checks on the submission path where it is actually going to be stored — and without
        the acknowledgement, which is `submit`'s alone. FR 17. */
     input: QuotableLeave,
+    /** A request being changed, which the new dates may land on. */
+    replacing?: string,
   ): Promise<{ employee: Employee; type: LeaveType; year: LeaveYear; period: LeavePeriod }> {
     const employee = await this.employeeFor(input.employeeId);
     const type = await this.typeFor(input.leaveTypeId);
@@ -2121,7 +2240,7 @@ export class LeaveRequestService {
 
     const year = await this.yearCovering(period);
 
-    await this.assertNothingIsAlreadyBooked(employee, period);
+    await this.assertNothingIsAlreadyBooked(employee, period, replacing);
 
     return { employee, type, year, period };
   }
@@ -2154,8 +2273,9 @@ export class LeaveRequestService {
   private async assertNothingIsAlreadyBooked(
     employee: Employee,
     period: LeavePeriod,
+    except?: string,
   ): Promise<void> {
-    const conflict = await this.requests.findOverlapping(employee.id, period);
+    const conflict = await this.requests.findOverlapping(employee.id, period, except);
 
     if (conflict === undefined) {
       return;
@@ -2391,6 +2511,11 @@ export class LeaveRequestService {
  */
 /** Who staffs each desk for one request, and who the `CEO` desk resolves to. FR 48b, FR 48c. */
 /** One request waiting at a desk, and who it is waiting on. FR 50, FR 60. */
+/** The days a request being changed holds, which come back to a balance in its own year. */
+function heldBack(request: LeaveRequest, year: LeaveYear): number {
+  return request.leaveYearId === year.id ? request.days : 0;
+}
+
 export interface AwaitingADecision {
   request: LeaveRequest;
   /** Whose leave it is, named in a message written to somebody else. */

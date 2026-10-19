@@ -468,7 +468,11 @@ export class AttachmentService {
 
     const attachment = await this.onThisRequest(request, attachmentId);
 
-    assertAttachmentsAreOpen(request, 'remove from');
+    assertAttachmentsAreOpen(
+      request,
+      'remove from',
+      await this.attachments.decisionsOn(request.id),
+    );
 
     /** FR 13. */
     assertItIsNotTheLastEvidence(

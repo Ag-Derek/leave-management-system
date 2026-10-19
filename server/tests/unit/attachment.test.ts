@@ -337,6 +337,14 @@ describe('when evidence may go on, and come off', () => {
       AttachmentsAreClosed,
     );
   });
+
+  /* As the dates are: once any desk has decided, at any stage, the files stay. */
+  it('and only until any desk has decided, though more may still be added', () => {
+    expect(() => assertAttachmentsAreOpen(aRequest(), 'remove from', 1)).toThrow(
+      'An approver has already responded',
+    );
+    expect(() => assertAttachmentsAreOpen(aRequest(), 'attach to', 1)).not.toThrow();
+  });
 });
 
 /* --------------------------- the file a request was let through on, FR 13 */

@@ -321,6 +321,8 @@ export interface LeaveRequestTable {
   awaiting_approval_from: string | null;
   /** FR 48d. One hand answered every stage, because there was nobody else. */
   decided_by_a_single_approver: ColumnType<boolean, never, boolean>;
+  /** The request this one changed the dates of, withdrawn by the change. Written once. */
+  replaces_request_id: ColumnType<string | null, string | null | undefined, never>;
   submitted_at: Timestamp;
   created_at: Timestamp;
   updated_at: Timestamp;

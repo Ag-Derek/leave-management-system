@@ -15,6 +15,7 @@ import {
   type ApprovalProgress,
   inWordsSettled,
   type LeaveRequest,
+  mayChangeDates,
   progressOf,
   type RequestStatus,
 } from './leave-request.js';
@@ -102,6 +103,10 @@ export interface RequestHistoryEntry {
   withdrawalAsked: boolean;
   /** The Chief Executive has reversed it, which happens once. */
   reversed: boolean;
+  /** Live and undecided at every stage, so its dates may still change. */
+  datesCanChange: boolean;
+  /** The dates it had before they were changed, where it replaced a request. */
+  changedFrom: { from: CalendarDate; to: CalendarDate } | null;
 }
 
 /** One person's requests, and the years they may narrow them to. */
@@ -344,6 +349,8 @@ export function entryFor(input: {
   /** FR 47. */
   withdrawals?: readonly Withdrawal[];
   reversal?: Reversal | null;
+  /** The request this one replaced, where it is in hand. */
+  replaced?: LeaveRequest;
 }): RequestHistoryEntry {
   const { request, type, decisions, deciders } = input;
 
@@ -385,6 +392,9 @@ export function entryFor(input: {
     ),
     withdrawalAsked: theOpenAsk(input.withdrawals ?? []) !== undefined,
     reversed: (input.reversal ?? null) !== null,
+    datesCanChange: mayChangeDates(request, decisions.length),
+    changedFrom:
+      input.replaced === undefined ? null : { from: input.replaced.from, to: input.replaced.to },
   };
 }
 
@@ -417,21 +427,36 @@ export function historyFor(facts: RequestHistoryFacts): RequestHistory {
   const withdrawalsByRequest = byRequest(facts.withdrawals ?? []);
   const reversalsByRequest = byRequest(facts.reversals ?? []);
 
+  /* A request whose dates were changed is shown once, as its replacement. */
+  const requestsById = new Map(facts.requests.map((request) => [request.id, request] as const));
+  const replacedIds = new Set(
+    facts.requests.flatMap((request) =>
+      request.replacesRequestId == null ? [] : [request.replacesRequestId],
+    ),
+  );
+
   return {
     employeeId: facts.employeeId,
     year: facts.year,
     years: [...facts.years],
-    entries: [...facts.requests].sort(byMostRecentlyAsked).map((request) =>
-      entryFor({
-        request,
-        type: typesById.get(request.leaveTypeId),
-        decisions: decisionsByRequest.get(request.id) ?? [],
-        deciders,
-        skipped: skipsByRequest.get(request.id) ?? [],
-        withdrawals: withdrawalsByRequest.get(request.id) ?? [],
-        reversal: reversalsByRequest.get(request.id)?.[0] ?? null,
-      }),
-    ),
+    entries: [...facts.requests]
+      .filter((request) => !replacedIds.has(request.id))
+      .sort(byMostRecentlyAsked)
+      .map((request) =>
+        entryFor({
+          request,
+          type: typesById.get(request.leaveTypeId),
+          decisions: decisionsByRequest.get(request.id) ?? [],
+          deciders,
+          skipped: skipsByRequest.get(request.id) ?? [],
+          withdrawals: withdrawalsByRequest.get(request.id) ?? [],
+          reversal: reversalsByRequest.get(request.id)?.[0] ?? null,
+          replaced:
+            request.replacesRequestId == null
+              ? undefined
+              : requestsById.get(request.replacesRequestId),
+        }),
+      ),
   };
 }
 

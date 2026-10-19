@@ -28,6 +28,7 @@ import { LeaveEventsPage } from './features/config/LeaveEventsPage';
 import { LeaversPage } from './features/config/LeaversPage';
 import { LeaveTypesPage } from './features/config/LeaveTypesPage';
 import { PolicySettingsPage } from './features/config/PolicySettingsPage';
+import { StaffLeavePage } from './features/config/StaffLeavePage';
 import { NewRequestPage } from './features/requests/NewRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
 import { ReportsPage } from './features/reports/ReportsPage';
@@ -339,6 +340,7 @@ export function App() {
         {screen === 'adjustments' ? <BalanceAdjustmentsPage onSignedOut={ranOut} /> : null}
         {screen === 'leave-events' ? <LeaveEventsPage onSignedOut={ranOut} /> : null}
         {screen === 'leavers' ? <LeaversPage onSignedOut={ranOut} /> : null}
+        {screen === 'staff-leave' ? <StaffLeavePage onSignedOut={ranOut} /> : null}
         {screen === 'reports' ? <ReportsPage onSignedOut={ranOut} /> : null}
         {screen === 'email-wording' ? <EmailWordingPage onSignedOut={ranOut} /> : null}
         {screen === 'audit' ? <AuditLogPage onSignedOut={ranOut} /> : null}
@@ -398,7 +400,8 @@ function subscribeToTheAddress(changed: () => void): () => void {
  * was grouped. Whether it answers anything is the screen's policy, not this.
  */
 function screenInTheAddress(): Screen {
-  const named = window.location.hash.replace(/^#\/?/, '');
+  // A screen may carry a query, as `#/ask?leaveTypeId=…` does; the screen is before it.
+  const named = window.location.hash.replace(/^#\/?/, '').split('?')[0] ?? '';
 
   return LABELS.has(named) ? (named as Screen) : DEFAULT_SCREEN;
 }

@@ -375,8 +375,12 @@ describe('every request I have made', () => {
       'awaiting',
       'calendarDays',
       'chain',
+      /* The dates it had, where it replaced a request whose dates were changed. */
+      'changedFrom',
       'countingBasis',
       'countingBasisLabel',
+      /* Nobody has decided anything, so its dates may still change. */
+      'datesCanChange',
       'days',
       /** FR 48d. One approver answered every stage of it. */
       'decidedBySingleApprover',
