@@ -42,6 +42,7 @@ export type IconName =
   | 'search'
   | 'mail'
   | 'list'
+  | 'bin'
   /* Showing and hiding a password as it is typed. */
   | 'eye'
   | 'eye-off'
@@ -109,6 +110,8 @@ const PATHS: Record<IconName, string> = {
   mail: 'M3 6h18v12H3zM3 7l9 6.5L21 7',
   /** A bulleted list. */
   list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  /** Removing one: a bin with its lid. */
+  bin: 'M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5',
   /** The password is hidden; pressing shows it. */
   eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   /** The password is showing; pressing hides it again. */

@@ -291,6 +291,8 @@ const REFUSED_BY_A_RULE: Readonly<Record<string, number>> = {
   LeaveCannotBeMoved: 409,
   /** Its dates are fixed once anybody has decided anything. */
   LeaveCannotBeChanged: 409,
+  /** Two of one person's plans over the same days. */
+  PlansOverlap: 409,
 
   /** FR 15, §5.6. Leave over leave already booked. */
   LeaveOverlapsAnother: 409,

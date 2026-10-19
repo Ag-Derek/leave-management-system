@@ -10,6 +10,7 @@ import {
   rewordEmail,
 } from '../../api';
 import { sentenceCase } from '../../format';
+import { EditButton } from '../../ActionButtons';
 import { Icon } from '../../Icon';
 import { Modal } from '../../Modal';
 import { Notice, type Problem, problemFrom } from '../../problem';
@@ -133,17 +134,13 @@ export function EmailWordingPage({ onSignedOut }: { onSignedOut: () => void }) {
                         <Icon name="eye" />
                         <span className="visually-hidden">Preview {email.label}</span>
                       </button>
-                      <button
-                        type="button"
-                        className="edit-button"
+                      <EditButton
+                        label={`Edit ${email.label}`}
                         onClick={() => {
                           setDone(undefined);
                           setEditing(email.name);
                         }}
-                      >
-                        <Icon name="pencil" />
-                        Edit<span className="visually-hidden"> {email.label}</span>
-                      </button>
+                      />
                     </span>
                   </td>
                 </tr>

@@ -4804,6 +4804,26 @@ server owns. Somebody who manages nobody gets the server's sentence.
 
 ---
 
+### Leave being planned
+
+**A plan is leave somebody is thinking of taking, shared so a department can plan around
+it.** Its own table, `leave_plan`, not a request or a draft: it holds no days, goes to no
+approver, and is edited and deleted freely by its owner. One person's plans never overlap
+(`leave_plan_never_overlaps`), each sits inside one leave year, and each is for leave still to
+come.
+
+**Seen as dates only.** The team calendar is given `PlannedDates` (whose, from, to) and
+nothing else, so the kind of leave and the note cannot reach a colleague. Plans sit in
+`plannedDays`, apart from `days`, so they count towards nobody being away, the busiest day or
+anything else the calendar says.
+
+**Set against the balance, never refused by it.** My plans counts each plan as a request would
+be counted and shows what is planned of each kind against what is left, with a warning past it.
+"Ask for this" opens the request form with the plan's dates, and the plan is removed once the
+request is in.
+
+---
+
 ### Who is away
 
 **Everybody can see who is off and when, and nobody can see what kind of leave it is or

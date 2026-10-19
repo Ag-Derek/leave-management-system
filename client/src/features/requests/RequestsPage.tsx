@@ -12,6 +12,7 @@ import {
   withdrawRequest,
   type Year,
 } from '../../api';
+import { EditButton } from '../../ActionButtons';
 import { ExportButtons } from '../../ExportButtons';
 import { dayAfter, inDays, moment, period, sentenceCase, statusLabel } from '../../format';
 import { Icon, iconForLeaveType } from '../../Icon';
@@ -168,16 +169,12 @@ function RequestCard({
     entry.datesCanChange || extendable ? (
       <>
         {entry.datesCanChange ? (
-          <button
-            type="button"
-            className="edit-button"
+          <EditButton
+            label={`Edit the request for ${period(entry.from, entry.to)}`}
             onClick={() => {
               setChanging(true);
             }}
-          >
-            <Icon name="pencil" />
-            Edit
-          </button>
+          />
         ) : null}
 
         {/* More sick days straight after these: a new request, on its own certificate where
@@ -275,23 +272,6 @@ function RequestCard({
             <p className="muted">Agreed under an earlier approval policy.</p>
           ) : null}
 
-          {/* FR 26. Withdraw only while the last desk has still to decide: a manager may
-              already have answered, but it is not settled until it leaves SUBMITTED. Edit and
-              Extend sit to its left. */}
-          {entry.status === 'SUBMITTED' ? (
-            <Withdraw
-              requestId={entry.requestId}
-              own={own}
-              leading={leading}
-              onSignedOut={onSignedOut}
-              onWithdrawn={onWithdrawn}
-            />
-          ) : leading === null ? null : (
-            <div className="withdraw">
-              <div className="withdraw-buttons">{leading}</div>
-            </div>
-          )}
-
           {/* FR 47. Approved leave is not taken back but asked about: the days are spent,
               so HR answers. One open ask at a time, which the server holds as well. Only the
               person asks; HR is who answers. */}
@@ -312,6 +292,25 @@ function RequestCard({
 
         <Trail steps={entry.trail} />
       </div>
+
+      {/* FR 26. Withdraw only while the last desk has still to decide: a manager may already
+          have answered, but it is not settled until it leaves SUBMITTED. Edit and Extend sit
+          to its left, at the foot of the card. */}
+      {entry.status === 'SUBMITTED' ? (
+        <div className="card-foot">
+          <Withdraw
+            requestId={entry.requestId}
+            own={own}
+            leading={leading}
+            onSignedOut={onSignedOut}
+            onWithdrawn={onWithdrawn}
+          />
+        </div>
+      ) : leading === null ? null : (
+        <div className="card-foot">
+          <div className="withdraw-buttons">{leading}</div>
+        </div>
+      )}
     </li>
   );
 }

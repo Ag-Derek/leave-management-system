@@ -8,6 +8,7 @@ import {
   setApprovalChain,
 } from '../../api';
 import { ChainEditor, ChainInOrder, type DeskChoices, sameChain } from './ChainEditor';
+import { EditButton } from '../../ActionButtons';
 import { Icon, iconForLeaveType } from '../../Icon';
 import { Modal } from '../../Modal';
 import { Notice, type Problem, problemFrom } from '../../problem';
@@ -173,10 +174,11 @@ function ChainCard({
         <Icon name="stage" />
         {type.approvedByLabel}
 
-        <button type="button" className="iconic trailing" onClick={onEdit}>
-          <Icon name="pencil" />
-          <span className="visually-hidden">Change who approves {type.name}</span>
-        </button>
+        <EditButton
+          label={`Change who approves ${type.name}`}
+          className="trailing"
+          onClick={onEdit}
+        />
       </p>
     </li>
   );

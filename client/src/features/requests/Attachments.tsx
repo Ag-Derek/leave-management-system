@@ -15,6 +15,7 @@ import {
   MAX_ATTACHMENTS_PER_REQUEST,
   rescanEvidence,
 } from '../../api';
+import { RemoveButton } from '../../ActionButtons';
 import { Icon } from '../../Icon';
 import { Modal } from '../../Modal';
 import { Notice, type Problem, problemFrom } from '../../problem';
@@ -363,15 +364,12 @@ function FileOnARequest({
           </button>
         </span>
       ) : (
-        <button
-          type="button"
-          className="linkish is-danger"
+        <RemoveButton
+          label={`Remove ${attachment.filename}`}
           onClick={() => {
             setConfirmingRemove(true);
           }}
-        >
-          Remove
-        </button>
+        />
       )}
 
       {/* NFR SEC 04. A link is meant to stop working, so the retry is the whole
@@ -571,16 +569,13 @@ export function Evidence({
                   </button>
                 ) : null}
 
-                <button
-                  type="button"
-                  className="linkish"
+                <RemoveButton
+                  label={`Remove ${attachment.filename}`}
                   disabled={busy}
                   onClick={() => {
                     act(discardEvidence(attachment.attachmentId));
                   }}
-                >
-                  Remove
-                </button>
+                />
               </li>
             ))}
           </ul>

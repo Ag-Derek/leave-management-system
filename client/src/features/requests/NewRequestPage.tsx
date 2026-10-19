@@ -7,6 +7,7 @@ import {
   type QuoteWarning,
   type RequestableLeaveType,
   type RequestForm,
+  removePlan,
   requestForm,
   quoteLeave,
   type Submitted,
@@ -54,7 +55,9 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
 
   const [leaveTypeId, setLeaveTypeId] = useState(() => prefilled('leaveTypeId'));
   const [from, setFrom] = useState(() => prefilled('from'));
-  const [to, setTo] = useState('');
+  const [to, setTo] = useState(() => prefilled('to'));
+  /** The plan this was opened from, removed once the request is in. */
+  const fromPlan = useRef(prefilled('plan'));
   const [reason, setReason] = useState('');
   /** FR 17. Answered about one period, so it is cleared whenever the period moves. */
   const [acknowledged, setAcknowledged] = useState(false);
@@ -186,6 +189,13 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
     })
       .then((next) => {
         setSubmitted(next);
+
+        /* Asked for from a plan, so the plan has done its job. A failure here leaves the plan
+           standing, which is harmless: it can be removed by hand. */
+        if (fromPlan.current !== '') {
+          void removePlan(fromPlan.current).catch(() => undefined);
+          fromPlan.current = '';
+        }
       })
       .catch((error: unknown) => {
         if (isNotSignedIn(error)) {
@@ -763,8 +773,8 @@ function placeholderFor(type: RequestableLeaveType | undefined): string {
     : `Anything ${type.approvedBy} should know. Leave it blank if there is nothing`;
 }
 
-/** A value the address carries, as `#/ask?leaveTypeId=…&from=…` from extending sick leave. */
-function prefilled(name: 'leaveTypeId' | 'from'): string {
+/** A value the address carries: from extending sick leave, or asking for a plan. */
+function prefilled(name: 'leaveTypeId' | 'from' | 'to' | 'plan'): string {
   const query = window.location.hash.split('?')[1] ?? '';
 
   return new URLSearchParams(query).get(name) ?? '';

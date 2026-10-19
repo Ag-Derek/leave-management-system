@@ -19,6 +19,7 @@ import type { DepartmentRepository } from '../department/department.db.js';
 import type { EmployeeRepository } from '../employee/employee.db.js';
 import type { LeaveRequestRepository } from '../leave-request/leave-request.db.js';
 import type { LeaveYearRepository } from '../leave-year/leave-year.db.js';
+import type { LeavePlanRepository } from '../plan/plan.db.js';
 
 /** Which slice of the calendar to show. */
 export interface TeamCalendarOptions {
@@ -42,6 +43,8 @@ export class TeamCalendarService {
     private readonly years: LeaveYearRepository,
     /** The headings, and what HR may filter by. */
     private readonly departments: DepartmentRepository,
+    /** Leave people are planning. Absent, the calendar shows none. */
+    private readonly plans?: LeavePlanRepository,
   ) {}
 
   /**
@@ -94,6 +97,12 @@ export class TeamCalendarService {
         team.map((person) => person.id),
         { from: year.startDate, to: year.endDate },
       ),
+      /* The same people over the same year, and only the dates reach the projection. */
+      plans:
+        (await this.plans?.overlapping(
+          team.map((person) => person.id),
+          { from: year.startDate, to: year.endDate },
+        )) ?? [],
       today: this.today(),
     });
   }

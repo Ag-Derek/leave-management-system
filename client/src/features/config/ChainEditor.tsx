@@ -1,6 +1,7 @@
 /** The ordered approver roles of one leave type. FR 38a. */
 
 import type { Choice, Desk } from '../../api';
+import { RemoveButton } from '../../ActionButtons';
 import { Icon } from '../../Icon';
 
 /** The desks, and what each is called. The server's words, never this file's. */
@@ -85,17 +86,13 @@ export function ChainEditor({
               </span>
             </button>
 
-            <button
-              type="button"
-              className="linkish"
+            <RemoveButton
+              label={`Remove ${nameOf(desk, choices)}`}
               disabled={disabled}
               onClick={() => {
                 onChange(chain.filter((one) => one !== desk));
               }}
-            >
-              <Icon name="cross" />
-              <span className="visually-hidden">Remove {nameOf(desk, choices)}</span>
-            </button>
+            />
           </li>
         ))}
       </ol>

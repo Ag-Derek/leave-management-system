@@ -16,6 +16,7 @@ import { AttachmentRepository } from './features/leave-request/attachment.db.js'
 import { AttachmentLinkRepository } from './features/leave-request/attachment-link.db.js';
 import { LeaveDecisionRepository } from './features/leave-request/leave-decision.db.js';
 import { LeaveRequestDraftRepository } from './features/leave-request/draft.db.js';
+import { LeavePlanRepository } from './features/plan/plan.db.js';
 import { LeaveRoutingRepository } from './features/leave-request/routing.db.js';
 import { ReclassificationRepository } from './features/leave-request/reclassification.db.js';
 import { WithdrawalRepository } from './features/leave-request/withdrawal.db.js';
@@ -226,6 +227,11 @@ const storage = createStorage();
 const app = buildApp({
   guard,
   signIn: new SignInService(accounts, employees, roles, mailer, guard),
+  /** Plans, and the calculator that prices them as a request would be. */
+  planning: {
+    plans: new LeavePlanRepository(db),
+    calculator: new LeaveCalculatorService(patterns, holidays, guard),
+  },
   balances,
   /** FR 27, FR 37. */
   ledger,

@@ -15,6 +15,7 @@ import {
   removeHoliday,
   type Year,
 } from '../../api';
+import { EditButton, RemoveButton } from '../../ActionButtons';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 
@@ -258,9 +259,7 @@ function HolidayRow({
       {holiday.mayBeChanged ? (
         <>
           <div className="card-actions">
-            <button type="button" disabled={busy} onClick={onEdit}>
-              Edit
-            </button>
+            <EditButton label={`Edit ${holiday.name}`} disabled={busy} onClick={onEdit} />
 
             {asking ? (
               <>
@@ -279,16 +278,13 @@ function HolidayRow({
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                className="linkish"
+              <RemoveButton
+                label={`Remove ${holiday.name}`}
                 disabled={busy}
                 onClick={() => {
                   setAsking(true);
                 }}
-              >
-                Remove
-              </button>
+              />
             )}
           </div>
 

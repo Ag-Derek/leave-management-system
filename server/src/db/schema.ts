@@ -328,6 +328,19 @@ export interface LeaveRequestTable {
   updated_at: Timestamp;
 }
 
+/** Leave somebody is planning to take. Holds nothing, goes to nobody. */
+export interface LeavePlanTable {
+  id: Generated<string>;
+  /** Never moved, by `leave_plan_stays_with_whose_it_is`. */
+  employee_id: ColumnType<string, string, never>;
+  leave_type_id: string;
+  start_date: string;
+  end_date: string;
+  note: string | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 /** A leave request somebody has started and not finished. FR 19. */
 export interface LeaveRequestDraftTable {
   id: Generated<string>;
@@ -609,6 +622,7 @@ export interface Database {
   leave_request_attachment: LeaveRequestAttachmentTable;
   leave_request_decision: LeaveRequestDecisionTable;
   leave_request_draft: LeaveRequestDraftTable;
+  leave_plan: LeavePlanTable;
   leave_request_reassignment: LeaveRequestReassignmentTable;
   leave_request_recalculation: LeaveRequestRecalculationTable;
   leave_request_reclassification: LeaveRequestReclassificationTable;

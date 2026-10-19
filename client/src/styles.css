@@ -3915,19 +3915,6 @@ select[aria-invalid='true'] {
   color: var(--ink-soft);
 }
 
-.edit-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.edit-button svg {
-  width: 1rem;
-  height: 1rem;
-}
-
 .row-actions {
   display: inline-flex;
   gap: 0.25rem;
@@ -5170,4 +5157,138 @@ button.linkish.file-name {
 .file-remove {
   display: inline-flex;
   gap: 0.25rem;
+}
+
+/* -------------------------------------------------------------- leave being planned */
+
+/* Planned and not asked for: a dotted line, fainter than leave anybody has asked for. */
+.lane.is-planned {
+  background: repeating-linear-gradient(90deg, var(--who) 0 3px, transparent 3px 6px);
+  opacity: 0.6;
+}
+
+/* What the three line styles mean, under the names. */
+.lane-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+}
+
+.lane-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lane-key .lane {
+  --who: var(--ink-soft);
+  display: inline-block;
+  width: 1.5rem;
+}
+
+.add-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.add-plan svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.plan-over {
+  margin: 0;
+  color: var(--warn);
+  font-size: 0.8125rem;
+}
+
+.data-table .plan-note {
+  max-width: 22rem;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------ a request card's own buttons */
+
+/* Bottom right of the card, below both columns, and smaller than a form's buttons. */
+.card-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.card-foot .withdraw {
+  align-items: flex-end;
+  margin-top: 0;
+  text-align: right;
+}
+
+.card-foot .withdraw-buttons {
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.card-foot button,
+.card-foot .button-link {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8125rem;
+}
+
+.card-foot .button-link svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.row-actions {
+  align-items: center;
+}
+
+/* ------------------------------------------- edit and remove, the same everywhere */
+
+/* A blue pencil and a red bin, borderless, with the word on hover and to a screen reader. */
+.iconic.action-icon {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.iconic.action-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.action-icon.is-edit {
+  color: var(--accent);
+}
+
+.action-icon.is-edit:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--accent-soft);
+}
+
+.action-icon.is-remove {
+  color: var(--warn);
+}
+
+.action-icon.is-remove:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--warn) 10%, var(--card));
+}
+
+/* On the end of a sentence, the size the trailing pencil always was. */
+.iconic.action-icon.trailing {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.iconic.action-icon.trailing svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }

@@ -66,6 +66,10 @@ import { emailWordingRoutes } from '../features/notification/wording.routes.js';
 import { teamRoutes } from '../features/team/routes.js';
 import { TeamService } from '../features/team/team.service.js';
 import { teamCalendarRoutes } from '../features/team/team-calendar.routes.js';
+import type { LeaveCalculatorService } from '../features/leave-calculator/leave-calculator.service.js';
+import type { LeavePlanRepository } from '../features/plan/plan.db.js';
+import { LeavePlanService } from '../features/plan/plan.service.js';
+import { planRoutes } from '../features/plan/routes.js';
 import { TeamCalendarService } from '../features/team/team-calendar.service.js';
 import { identify, insistOnANewPassword } from './identify.js';
 import { answerProblems, type FailureLog } from './problems.js';
@@ -129,6 +133,8 @@ export interface Application {
   reversals?: ReversalRepository;
   /** FR 19. Requests started and not finished. */
   drafts: LeaveRequestDraftRepository;
+  /** Leave people are planning. Optional, so a test app without it shows no plans. */
+  planning?: { plans: LeavePlanRepository; calculator: LeaveCalculatorService };
   /** FR 12. Certificates and supporting documents. */
   attachments: AttachmentRepository;
   /** NFR SEC 04. The short-lived links they are fetched through, and who fetched them. */
@@ -405,9 +411,28 @@ export function buildApp(parts: Application): Express {
         parts.requests,
         parts.years,
         parts.departments,
+        /* Plans are drawn beside the leave, and like it carry dates and nothing else. */
+        parts.planning?.plans,
       ),
     }),
   );
+
+  if (parts.planning !== undefined) {
+    app.use(
+      '/api',
+      planRoutes({
+        plans: new LeavePlanService(
+          parts.guard,
+          parts.planning.plans,
+          parts.employees,
+          parts.types,
+          parts.years,
+          parts.balances,
+          parts.planning.calculator,
+        ),
+      }),
+    );
+  }
 
   /** FR 54, and the request form, quote and submission. */
   app.use(

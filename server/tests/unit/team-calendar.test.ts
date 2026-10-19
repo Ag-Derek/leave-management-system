@@ -270,6 +270,42 @@ describe('what the screen says it is', () => {
 
 /* --------------------------------------------------------------------------- fixtures */
 
+describe('leave somebody is planning', () => {
+  const PLAN = { employeeId: 'abena', from: '2026-07-06', to: '2026-07-08' };
+
+  it('is on the calendar with its dates, on days of its own', () => {
+    const calendar = calendarOf({ plans: [PLAN] });
+
+    expect(colleague(calendar, 'abena').planned).toEqual([
+      expect.objectContaining({ from: PLAN.from, to: PLAN.to, calendarDays: 3 }),
+    ]);
+    expect(calendar.plannedDays.map((day) => day.date)).toEqual([
+      '2026-07-06',
+      '2026-07-07',
+      '2026-07-08',
+    ]);
+  });
+
+  /* A plan holds nothing and nobody has agreed it, so it is not somebody being away. */
+  it('and counts towards nobody being away', () => {
+    const calendar = calendarOf({ plans: [PLAN], today: '2026-07-07' });
+
+    expect(calendar.days).toEqual([]);
+    expect(calendar.awayToday).toEqual([]);
+    expect(calendar.busiest).toBe(0);
+  });
+
+  /* Only dates reach the projection, so there is no kind and no note to send. */
+  it('and carries nothing but its dates', () => {
+    expect(Object.keys(colleague(calendarOf({ plans: [PLAN] }), 'abena').planned[0])).toEqual([
+      'from',
+      'to',
+      'calendarDays',
+      'inWords',
+    ]);
+  });
+});
+
 function calendarOf(facts: Partial<TeamCalendarFacts>): TeamCalendarView {
   return teamCalendarFor({
     reader: ADWOA,

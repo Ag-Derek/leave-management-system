@@ -92,6 +92,8 @@ function calendarAsJson(view: TeamCalendarView): unknown {
     awayToday: view.awayToday.map(awayAsJson),
     colleagues: view.colleagues.map(colleagueAsJson),
     days: view.days.map(dayAsJson),
+    /** Planned, not asked for. Apart from `days` so they count towards nothing. */
+    plannedDays: view.plannedDays.map(dayAsJson),
   };
 }
 
@@ -120,6 +122,13 @@ function colleagueAsJson(colleague: Colleague): unknown {
     awayToday: colleague.awayToday,
     inWords: colleague.inWords,
     absences: colleague.absences.map(absenceAsJson),
+    /** Dates only: the kind of leave and the note never reach a colleague. */
+    planned: colleague.planned.map((one) => ({
+      from: one.from,
+      to: one.to,
+      calendarDays: one.calendarDays,
+      inWords: one.inWords,
+    })),
   };
 }
 

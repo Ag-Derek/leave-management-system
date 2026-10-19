@@ -153,6 +153,7 @@ export function CalendarPage({
         <Month
           month={showing}
           days={calendar.days}
+          plannedDays={calendar.plannedDays}
           colleagues={calendar.colleagues}
           today={todayInWholeDays()}
         />
@@ -162,7 +163,7 @@ export function CalendarPage({
       <p className="footnote">
         <Icon name="info" />
         Only the dates are shown. Leave type and reason are not on this screen at all, just who is
-        away and when.
+        away and when. Planned leave is somebody thinking ahead: nothing is booked or agreed.
       </p>
 
       <ol className="requests">

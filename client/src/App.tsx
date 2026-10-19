@@ -29,6 +29,7 @@ import { LeaversPage } from './features/config/LeaversPage';
 import { LeaveTypesPage } from './features/config/LeaveTypesPage';
 import { PolicySettingsPage } from './features/config/PolicySettingsPage';
 import { StaffLeavePage } from './features/config/StaffLeavePage';
+import { MyPlansPage } from './features/plans/MyPlansPage';
 import { NewRequestPage } from './features/requests/NewRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
 import { ReportsPage } from './features/reports/ReportsPage';
@@ -55,6 +56,8 @@ const MAIN_SCREENS = [
   { id: 'balances', label: 'My balances', icon: 'balances' },
   { id: 'ask', label: 'Ask for leave', icon: 'ask' },
   { id: 'requests', label: 'My requests', icon: 'requests' },
+  /** Leave I am thinking of taking, shared with my department for planning. */
+  { id: 'plans', label: 'My plans', icon: 'holiday' },
   /** FR 55, FR 56, FR 57. Everybody's, scoped to a department. */
   { id: 'calendar', label: 'Who is away', icon: 'calendar' },
   { id: 'approvals', label: 'Waiting on me', icon: 'approvals' },
@@ -326,6 +329,7 @@ export function App() {
         ) : null}
         {screen === 'ask' ? <NewRequestPage onSignedOut={ranOut} /> : null}
         {screen === 'requests' ? <RequestsPage onSignedOut={ranOut} /> : null}
+        {screen === 'plans' ? <MyPlansPage onSignedOut={ranOut} /> : null}
         {screen === 'calendar' ? (
           <CalendarPage onSignedOut={ranOut} yearId={yearId} onYears={yearsKnown} />
         ) : null}

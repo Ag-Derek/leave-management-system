@@ -31,6 +31,7 @@ interface Lane {
 export function Month({
   month,
   days,
+  plannedDays,
   colleagues,
   today,
 }: {
@@ -38,13 +39,17 @@ export function Month({
   month: string;
   /** Every away day the calendar holds, not only this month's. */
   days: AwayDay[];
+  /** Every day somebody has planned, drawn fainter than leave that was asked for. */
+  plannedDays: AwayDay[];
   colleagues: Colleague[];
   /** Ten characters. */
   today: string;
 }) {
   const inThisMonth = days.filter((day) => day.date.startsWith(month));
-  const lanes = lanesIn(inThisMonth, colleagues);
+  const plannedThisMonth = plannedDays.filter((day) => day.date.startsWith(month));
+  const lanes = lanesIn([...inThisMonth, ...plannedThisMonth], colleagues);
   const byDate = new Map(inThisMonth.map((day) => [day.date, day]));
+  const plannedByDate = new Map(plannedThisMonth.map((day) => [day.date, day]));
 
   return (
     <>
@@ -64,6 +69,7 @@ export function Month({
               lastWeek={index === weeks.length - 1}
               today={date === today}
               away={byDate.get(date)}
+              planned={plannedByDate.get(date)}
               lanes={lanes}
             />
           )),
@@ -72,16 +78,34 @@ export function Month({
 
       {/* NFR USA 03. What actually says whose stripe is whose. */}
       {lanes.length === 0 ? (
-        <p className="month-empty">Nobody is away in {nameOf(month)}.</p>
+        <p className="month-empty">Nobody is away or planning leave in {nameOf(month)}.</p>
       ) : (
-        <ul className="who-legend">
-          {lanes.map(({ colleague, hue }) => (
-            <li key={colleague.employeeId} className={colleague.isMe ? 'is-me' : undefined}>
-              <span className="who-swatch" style={hueOf(hue)} />
-              {colleague.isMe ? `${colleague.name} (you)` : colleague.name}
+        <>
+          <ul className="who-legend">
+            {lanes.map(({ colleague, hue }) => (
+              <li key={colleague.employeeId} className={colleague.isMe ? 'is-me' : undefined}>
+                <span className="who-swatch" style={hueOf(hue)} />
+                {colleague.isMe ? `${colleague.name} (you)` : colleague.name}
+              </li>
+            ))}
+          </ul>
+
+          {/* What the three line styles mean, so colour is never the only thing saying it. */}
+          <ul className="lane-key">
+            <li>
+              <span className="lane is-away" />
+              Agreed
             </li>
-          ))}
-        </ul>
+            <li>
+              <span className="lane is-asked" />
+              Asked for
+            </li>
+            <li>
+              <span className="lane is-planned" />
+              Planned
+            </li>
+          </ul>
+        </>
       )}
     </>
   );
@@ -94,6 +118,7 @@ function Day({
   lastWeek,
   today,
   away,
+  planned,
   lanes,
 }: {
   date: string;
@@ -101,16 +126,26 @@ function Day({
   lastWeek: boolean;
   today: boolean;
   away: AwayDay | undefined;
+  planned: AwayDay | undefined;
   lanes: Lane[];
 }) {
-  /** FR 41. Which of the two, rather than only whether. */
-  const standing = new Map(
-    (away?.away ?? []).map((one) => [one.employeeId, one.agreed ? 'agreed' : 'asked'] as const),
+  /** FR 41. Which of the three, rather than only whether. Leave asked for outranks a plan. */
+  const standing = new Map<string, 'agreed' | 'asked' | 'planned'>(
+    (planned?.away ?? []).map((one) => [one.employeeId, 'planned'] as const),
   );
 
-  const names = (away?.away ?? []).map(
-    (one) => `${one.isMe ? 'You' : one.name}${one.agreed ? '' : ', asked for'}`,
-  );
+  for (const one of away?.away ?? []) {
+    standing.set(one.employeeId, one.agreed ? 'agreed' : 'asked');
+  }
+
+  const names = [
+    ...(away?.away ?? []).map(
+      (one) => `${one.isMe ? 'You' : one.name}${one.agreed ? '' : ', asked for'}`,
+    ),
+    ...(planned?.away ?? [])
+      .filter((one) => standing.get(one.employeeId) === 'planned')
+      .map((one) => `${one.isMe ? 'You' : one.name}, planned`),
+  ];
 
   return (
     <div
@@ -134,7 +169,7 @@ function Day({
           return (
             <span
               key={colleague.employeeId}
-              className={`lane${mine === undefined ? '' : mine === 'agreed' ? ' is-away' : ' is-asked'}`}
+              className={`lane${mine === undefined ? '' : LANE_STYLE[mine]}`}
               style={mine === undefined ? undefined : hueOf(hue)}
             />
           );
@@ -143,6 +178,8 @@ function Day({
     </div>
   );
 }
+
+const LANE_STYLE = { agreed: ' is-away', asked: ' is-asked', planned: ' is-planned' } as const;
 
 /* -------------------------------------------------------------------------- the shapes */
 

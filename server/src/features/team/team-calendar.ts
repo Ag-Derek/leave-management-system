@@ -34,6 +34,21 @@ export interface Absence {
   inWords: string;
 }
 
+/** Leave somebody is planning: dates, and nothing about the kind or the note. */
+export interface Planned {
+  from: CalendarDate;
+  to: CalendarDate;
+  calendarDays: number;
+  inWords: string;
+}
+
+/** What the calendar is given of a plan. Whose, and when; nothing else can reach it. */
+export interface PlannedDates {
+  employeeId: string;
+  from: CalendarDate;
+  to: CalendarDate;
+}
+
 /** A department, as the calendar names one. */
 export interface DepartmentOnTheCalendar {
   id: string;
@@ -56,6 +71,8 @@ export interface Colleague {
   awayToday: boolean;
   /** Soonest first. */
   absences: Absence[];
+  /** Leave they are planning and have not asked for. Soonest first. */
+  planned: Planned[];
   /** NFR USA 03. */
   inWords: string;
 }
@@ -96,6 +113,8 @@ export interface TeamCalendarView {
   colleagues: Colleague[];
   /** Only the days somebody is away, soonest first. */
   days: AwayDay[];
+  /** The days somebody has planned, kept apart so they count towards nothing above. */
+  plannedDays: AwayDay[];
   /** The most away on any one day. */
   busiest: number;
   /** Out right now. */
@@ -119,6 +138,8 @@ export interface TeamCalendarFacts {
   canChooseDepartment: boolean;
   /** The team's live leave in this year, from `LeaveRequestRepository.liveOverlapping`. */
   leave: readonly LeaveRequest[];
+  /** The team's plans in this year. Left out, there are none. */
+  plans?: readonly PlannedDates[];
   /** NFR DAT 03. */
   today: CalendarDate;
 }
@@ -139,7 +160,10 @@ export function teamCalendarFor(facts: TeamCalendarFacts): TeamCalendarView {
     .sort(byManagerThenName(facts.reader.managerId))
     .map((person) => colleagueFor(person, facts, named));
 
-  const days = daysOf(colleagues, facts);
+  const days = daysOf(colleagues, facts, (colleague) => colleague.absences);
+  const plannedDays = daysOf(colleagues, facts, (colleague) =>
+    colleague.planned.map((one) => ({ ...one, agreed: false })),
+  );
   const busiest = days.reduce((most, day) => Math.max(most, day.away.length), 0);
   const awayToday = days.find((day) => day.date === facts.today)?.away ?? [];
 
@@ -155,6 +179,7 @@ export function teamCalendarFor(facts: TeamCalendarFacts): TeamCalendarView {
     size: colleagues.length,
     colleagues,
     days,
+    plannedDays,
     busiest,
     awayToday,
     inWords: calendarInWords(colleagues, days, awayToday, busiest, facts),
@@ -175,6 +200,11 @@ function colleagueFor(
   const isMe = person.id === facts.reader.id;
   const awayToday = absences.some((one) => one.from <= facts.today && facts.today <= one.to);
 
+  const planned = (facts.plans ?? [])
+    .filter((plan) => plan.employeeId === person.id)
+    .sort((left, right) => (left.from < right.from ? -1 : left.from > right.from ? 1 : 0))
+    .map(plannedFor);
+
   return {
     employeeId: person.id,
     name: nameOf(person),
@@ -185,6 +215,7 @@ function colleagueFor(
     isTheManager: person.id === facts.reader.managerId,
     awayToday,
     absences,
+    planned,
     inWords: colleagueInWords(person, isMe, absences, awayToday, facts.year),
   };
 }
@@ -208,12 +239,30 @@ function absenceFor(request: LeaveRequest): Absence {
   };
 }
 
-/** Who is away on which day. Days nobody is away are not listed. */
-function daysOf(colleagues: readonly Colleague[], facts: TeamCalendarFacts): AwayDay[] {
+/** A plan as the calendar carries it: the dates and how long. */
+function plannedFor(plan: PlannedDates): Planned {
+  const calendarDays = [...eachDay(plan.from, plan.to)].length;
+
+  return {
+    from: plan.from,
+    to: plan.to,
+    calendarDays,
+    inWords:
+      `${formatDay(plan.from)} to ${formatDay(plan.to)}, ${days(calendarDays)}, planned and ` +
+      'not yet asked for.',
+  };
+}
+
+/** Who is on which day, of the spans `spansOf` names. Days with nobody are not listed. */
+function daysOf(
+  colleagues: readonly Colleague[],
+  facts: TeamCalendarFacts,
+  spansOf: (colleague: Colleague) => { from: CalendarDate; to: CalendarDate; agreed: boolean }[],
+): AwayDay[] {
   const byDay = new Map<CalendarDate, AwayOn[]>();
 
   for (const colleague of colleagues) {
-    for (const absence of colleague.absences) {
+    for (const absence of spansOf(colleague)) {
       for (const day of eachDay(absence.from, absence.to)) {
         if (day < facts.year.startDate || day > facts.year.endDate) {
           continue;

@@ -10,6 +10,7 @@ import {
   type RuleScope,
   withdrawEntitlementRule,
 } from '../../api';
+import { EditButton, RemoveButton } from '../../ActionButtons';
 import { day, inDays } from '../../format';
 import { Icon, iconForLeaveType } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
@@ -240,9 +241,11 @@ function RuleCard({
           every card. The server still refuses the write with the whole sentence. */}
       {rule.mayBeChanged ? (
         <div className="card-actions">
-          <button type="button" disabled={busy} onClick={onEdit}>
-            Edit
-          </button>
+          <EditButton
+            label={`Edit this ${rule.leaveTypeName} rule`}
+            disabled={busy}
+            onClick={onEdit}
+          />
 
           {asking ? (
             <>
@@ -261,16 +264,13 @@ function RuleCard({
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              className="linkish"
+            <RemoveButton
+              label={`Withdraw this ${rule.leaveTypeName} rule`}
               disabled={busy}
               onClick={() => {
                 setAsking(true);
               }}
-            >
-              Withdraw
-            </button>
+            />
           )}
         </div>
       ) : null}

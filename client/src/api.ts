@@ -640,6 +640,16 @@ export interface Colleague {
   inWords: string;
   /** Soonest first. */
   absences: Absence[];
+  /** Leave they are planning and have not asked for. Dates only. */
+  planned: Planned[];
+}
+
+/** Leave somebody is planning, as the team calendar shows it: dates and nothing else. */
+export interface Planned {
+  from: string;
+  to: string;
+  calendarDays: number;
+  inWords: string;
 }
 
 /** One person away on one day. */
@@ -681,6 +691,67 @@ export interface TeamAwayCalendar {
   colleagues: Colleague[];
   /** Soonest first. */
   days: AwayDay[];
+  /** Days somebody has planned. Apart from `days`, so they count towards nothing. */
+  plannedDays: AwayDay[];
+}
+
+/** ------------------------------------------------ leave I am planning */
+
+/** One of my plans, with what it would cost. */
+export interface Plan {
+  planId: string;
+  leaveTypeId: string;
+  typeName: string;
+  countingBasisLabel: string;
+  /** Ten characters. */
+  from: string;
+  to: string;
+  note: string | null;
+  days: number;
+}
+
+/** Everything planned of one kind in the year, against what is left. */
+export interface PlanTotal {
+  leaveTypeId: string;
+  typeName: string;
+  planned: number;
+  /** Null where the kind has no running balance. */
+  available: number | null;
+  /** Planned past what is left. A warning, never a refusal. */
+  over: boolean;
+}
+
+export interface PlanBook {
+  year: Year;
+  years: Year[];
+  plans: Plan[];
+  totals: PlanTotal[];
+}
+
+/** What a plan is made of, as the form sends it. */
+export interface PlanFields {
+  leaveTypeId: string;
+  from: string;
+  to: string;
+  note: string;
+}
+
+export async function myPlans(leaveYearId?: string): Promise<PlanBook> {
+  const query = leaveYearId === undefined ? '' : `?leaveYearId=${encodeURIComponent(leaveYearId)}`;
+
+  return request<PlanBook>('GET', `/api/me/plans${query}`);
+}
+
+export async function addPlan(fields: PlanFields): Promise<void> {
+  await request<unknown>('POST', '/api/me/plans', fields);
+}
+
+export async function changePlan(planId: string, fields: PlanFields): Promise<void> {
+  await request<unknown>('PUT', `/api/me/plans/${encodeURIComponent(planId)}`, fields);
+}
+
+export async function removePlan(planId: string): Promise<void> {
+  await request<void>('DELETE', `/api/me/plans/${encodeURIComponent(planId)}`);
 }
 
 /** ---------------------------------------- requests I have not finished. FR 19. */
