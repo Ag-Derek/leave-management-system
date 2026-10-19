@@ -4756,3 +4756,295 @@ button.linkish.file-name {
 .cancel-asks {
   margin-bottom: var(--gap-lg);
 }
+
+/* ----------------------------------------------------------- HR reports. FR 63 */
+
+.report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.report-tab {
+  border-radius: 999px;
+  padding: 0.45rem 0.95rem;
+}
+
+.report-tab[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.report-blurb {
+  margin: 0.6rem 0 var(--gap);
+}
+
+.filters-card .board-head {
+  align-items: center;
+}
+
+.board-head-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.reset-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.reset-all svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.filter-grid input,
+.filter-grid select {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.report-body[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+/* A titled card: a headline figure, its parts as small tiles, or both. */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--gap);
+  margin: 0 0 var(--gap-lg);
+  padding: 0;
+  list-style: none;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.summary-card.is-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 40rem) {
+  .summary-card.is-wide {
+    grid-column: auto;
+  }
+}
+
+.summary-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.summary-card-head h3 {
+  min-width: 0;
+  font-family: var(--face-text);
+  font-size: 1rem;
+  font-weight: 600;
+  overflow-wrap: break-word;
+}
+
+.summary-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+}
+
+.summary-figure b {
+  font-family: var(--face-figure);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.summary-figure span {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.summary-figure.overdrawn b {
+  color: var(--warn);
+}
+
+.summary-parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The tint says which part it is; the figure stays in ink. */
+.summary-parts li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.6rem 0.4rem;
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--tone) 10%, var(--card));
+  text-align: center;
+}
+
+.summary-parts b {
+  font-family: var(--face-figure);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.summary-parts span {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+}
+
+.summary-parts .is-blue {
+  --tone: var(--accent);
+}
+
+.summary-parts .is-green {
+  --tone: var(--go);
+}
+
+.summary-parts .is-sky {
+  --tone: var(--brand-sky);
+}
+
+.summary-parts .is-warn {
+  --tone: var(--warn);
+}
+
+/* Days per month: one series, columns from a hairline baseline, a readout on hover. */
+.month-bars {
+  margin: 0;
+}
+
+.month-bars-plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 3.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+/* The whole column is the hover target, not just the bar. */
+.month-bars-slot {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+}
+
+.month-bars-bar {
+  width: 100%;
+  max-width: 24px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+}
+
+.month-bars-slot:hover .month-bars-bar {
+  filter: brightness(0.85);
+}
+
+.month-bars-slot:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--card);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.month-bars figcaption {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.3rem;
+  color: var(--ink-faint);
+  font-size: 0.6875rem;
+}
+
+/* Nothing to show, in the space a table would have taken. */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--ink) 2%, var(--card));
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.empty-state svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* A table of figures: words left, numbers right and lined up on the digit. */
+.data-table.is-figures th,
+.data-table.is-figures td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table.is-figures .is-text,
+.data-table.is-figures tbody th {
+  text-align: left;
+}
+
+.data-table.is-figures tbody th {
+  font-weight: 600;
+}
+
+.data-table.is-figures tbody th small {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.data-table.is-figures td.overdrawn {
+  color: var(--warn);
+}

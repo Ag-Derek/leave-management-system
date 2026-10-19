@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   type CarriedOverReport,
   carriedOverReport,
@@ -21,17 +21,42 @@ import {
 } from '../../api';
 import { ExportButtons } from '../../ExportButtons';
 import { day, days, period } from '../../format';
-import { Icon } from '../../Icon';
+import { Icon, iconForLeaveType, type IconName } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 
 /** HR's reports on leave across the company. FR 63, FR 58, FR 64. */
 
 const REPORTS = [
-  { id: 'liability', path: 'liability', label: 'Leave liability by department' },
-  { id: 'taken', path: 'leave-taken', label: 'Leave taken by type and period' },
-  { id: 'overdue', path: 'overdue-requests', label: 'Requests past the turnaround' },
-  { id: 'usage', path: 'usage', label: 'Zero or excessive leave taken' },
-  { id: 'carried', path: 'carried-over', label: 'Carried over balances' },
+  {
+    id: 'liability',
+    path: 'liability',
+    label: 'Leave liability',
+    blurb: 'Days granted, taken and still owed, by leave type and department.',
+  },
+  {
+    id: 'taken',
+    path: 'leave-taken',
+    label: 'Leave taken',
+    blurb: 'Approved leave by type, counted in the month it starts.',
+  },
+  {
+    id: 'overdue',
+    path: 'overdue-requests',
+    label: 'Overdue requests',
+    blurb: 'Requests waiting longer than the turnaround for a decision.',
+  },
+  {
+    id: 'usage',
+    path: 'usage',
+    label: 'Zero or excessive use',
+    blurb: 'People who took none of their leave, or more than they were given.',
+  },
+  {
+    id: 'carried',
+    path: 'carried-over',
+    label: 'Carried over',
+    blurb: 'Days carried into the year, by leave type and by person. Carry over is uncapped.',
+  },
 ] as const;
 
 type ReportId = (typeof REPORTS)[number]['id'];
@@ -100,9 +125,19 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
 
   useEffect(load, [load]);
 
+  const resetAll = () => {
+    // No year means the server's default, the current one.
+    setYearId(undefined);
+    setFrom('');
+    setTo('');
+    setTurnaround('');
+    setDepartmentId('');
+    setLeaveTypeId('');
+  };
+
   const showing = loaded?.id === chosen ? loaded : undefined;
   const overAYear = chosen === 'liability' || chosen === 'usage' || chosen === 'carried';
-  const path = REPORTS.find((one) => one.id === chosen)?.path ?? chosen;
+  const report = REPORTS.find((one) => one.id === chosen) ?? REPORTS[0];
 
   return (
     <div className="page">
@@ -111,27 +146,45 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
           Leave across the company, for HR. People who have left are not counted in the balance
           reports; their figure is on the Leavers screen.
         </p>
+      </div>
 
-        <div className="controls">
-          <label className="filter">
-            <span className="visually-hidden">Report</span>
-            <select
-              value={chosen}
-              onChange={(event) => {
-                setChosen(event.target.value as ReportId);
-              }}
-            >
-              {REPORTS.map((one) => (
-                <option key={one.id} value={one.id}>
-                  {one.label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="report-tabs">
+        {REPORTS.map((one) => (
+          <button
+            key={one.id}
+            type="button"
+            className="report-tab"
+            aria-pressed={one.id === chosen}
+            onClick={() => {
+              setChosen(one.id);
+            }}
+          >
+            {one.label}
+          </button>
+        ))}
+      </div>
+      <p className="muted report-blurb">{report.blurb}</p>
 
+      <section className="board filters-card">
+        <div className="board-head">
+          <h2>Filters</h2>
+          <span className="board-head-end">
+            <button type="button" className="linkish reset-all" onClick={resetAll}>
+              <Icon name="again" />
+              Reset all
+            </button>
+            <ExportButtons
+              path={reportExportPath(report.path, query)}
+              onSignedOut={onSignedOut}
+              onProblem={setProblem}
+            />
+          </span>
+        </div>
+
+        <div className="filter-grid">
           {overAYear && years.length > 0 ? (
-            <label className="filter">
-              <span className="visually-hidden">Leave year</span>
+            <label>
+              Leave year
               <select
                 value={yearId ?? ''}
                 onChange={(event) => {
@@ -148,8 +201,8 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
             </label>
           ) : null}
 
-          <label className="filter">
-            <span className="visually-hidden">Department</span>
+          <label>
+            Department
             <select
               value={departmentId}
               onChange={(event) => {
@@ -165,8 +218,8 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
             </select>
           </label>
 
-          <label className="filter">
-            <span className="visually-hidden">Leave type</span>
+          <label>
+            Leave type
             <select
               value={leaveTypeId}
               onChange={(event) => {
@@ -184,8 +237,8 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
 
           {chosen === 'taken' || chosen === 'overdue' ? (
             <>
-              <label className="filter">
-                <span className="muted">{chosen === 'overdue' ? 'Submitted from' : 'From'}</span>
+              <label>
+                {chosen === 'overdue' ? 'Submitted from' : 'From'}
                 <input
                   type="date"
                   value={from}
@@ -194,8 +247,8 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
                   }}
                 />
               </label>
-              <label className="filter">
-                <span className="muted">To</span>
+              <label>
+                To
                 <input
                   type="date"
                   value={to}
@@ -208,8 +261,8 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
           ) : null}
 
           {chosen === 'overdue' ? (
-            <label className="filter">
-              <span className="muted">Turnaround, in days</span>
+            <label>
+              Turnaround, in days
               <input
                 type="number"
                 min={0}
@@ -222,20 +275,22 @@ export function ReportsPage({ onSignedOut }: { onSignedOut: () => void }) {
               />
             </label>
           ) : null}
-
-          <ExportButtons
-            path={reportExportPath(path, query)}
-            onSignedOut={onSignedOut}
-            onProblem={setProblem}
-          />
         </div>
-      </div>
+      </section>
 
       {problem === undefined ? null : (
         <Notice problem={problem} retrying={loading} onRetry={load} />
       )}
 
-      {showing === undefined ? loading ? <Skeletons /> : null : <Report loaded={showing} />}
+      {showing === undefined ? (
+        loading ? (
+          <Skeletons />
+        ) : null
+      ) : (
+        <div className="report-body" aria-busy={loading}>
+          <Report loaded={showing} />
+        </div>
+      )}
     </div>
   );
 }
@@ -258,26 +313,56 @@ function Report({ loaded }: { loaded: Loaded }) {
 /* ------------------------------------------------------------------ liability */
 
 function Liability({ report }: { report: LiabilityReport }) {
+  const headcount = report.departments.reduce((sum, one) => sum + one.headcount, 0);
+
   return (
     <>
-      <Section title={`The company, ${report.year.label}`}>
+      <SummaryCards>
+        <SummaryCard
+          icon="people"
+          title="People counted"
+          figure={String(headcount)}
+          caption={`in ${String(report.departments.length)} ${report.departments.length === 1 ? 'department' : 'departments'}`}
+        />
+        {report.company.map((line) => (
+          <SummaryCard
+            key={line.leaveTypeId}
+            icon={iconForLeaveType(line.name)}
+            title={line.name}
+            figure={days(line.unused)}
+            caption={`${line.countingBasisLabel.toLowerCase()} unused`}
+            overdrawn={line.unused < 0}
+            parts={[
+              { label: 'Granted', figure: days(line.entitled), tone: 'blue' },
+              { label: 'Taken', figure: days(line.taken), tone: 'green' },
+              { label: 'Held', figure: days(line.pending), tone: 'sky' },
+            ]}
+          />
+        ))}
+      </SummaryCards>
+
+      <Board title="The company" aside={report.year.label}>
         <LiabilityTable lines={report.company} />
-      </Section>
+      </Board>
 
       {report.departments.map((department) => (
-        <Section
+        <Board
           key={department.departmentId}
           title={department.name}
           aside={`${String(department.headcount)} ${department.headcount === 1 ? 'person' : 'people'}`}
         >
           <LiabilityTable lines={department.lines} />
-        </Section>
+        </Board>
       ))}
     </>
   );
 }
 
 function LiabilityTable({ lines }: { lines: LiabilityLine[] }) {
+  if (lines.length === 0) {
+    return <Empty said="No leave granted here in this year." />;
+  }
+
   return (
     <Table
       head={['Leave type', 'People', 'Granted', 'Carried', 'Adjusted', 'Taken', 'Held', 'Unused']}
@@ -304,70 +389,161 @@ function LiabilityTable({ lines }: { lines: LiabilityLine[] }) {
 
 function LeaveTaken({ report }: { report: LeaveTakenReport }) {
   return (
-    <Section
-      title="Approved leave"
-      aside={`${period(report.from, report.to)}, counted in the month it starts`}
-    >
-      <Table head={['Leave type', ...report.months.map(monthLabel), 'Days', 'Requests']}>
+    <>
+      <SummaryCards>
         {report.lines.map((line) => (
-          <tr key={line.leaveTypeId}>
-            <TypeCell name={line.name} basis={line.countingBasisLabel} />
-            {line.byMonth.map((figure, index) => (
-              <td key={report.months[index]}>{days(figure)}</td>
-            ))}
-            <td>
-              <b>{days(line.days)}</b>
-            </td>
-            <td>{line.requests}</td>
-          </tr>
+          <SummaryCard
+            key={line.leaveTypeId}
+            icon={iconForLeaveType(line.name)}
+            title={line.name}
+            figure={days(line.days)}
+            caption={`${line.countingBasisLabel.toLowerCase()}, ${String(line.requests)} ${line.requests === 1 ? 'request' : 'requests'}`}
+          >
+            <MonthBars
+              months={report.months}
+              values={line.byMonth}
+              unit={line.countingBasisLabel}
+            />
+          </SummaryCard>
         ))}
-      </Table>
-    </Section>
+      </SummaryCards>
+
+      <Board title="Month by month" aside={period(report.from, report.to)}>
+        {report.lines.length === 0 ? (
+          <Empty said="No approved leave starts in this period." />
+        ) : (
+          <Table head={['Leave type', ...report.months.map(monthLabel), 'Days', 'Requests']}>
+            {report.lines.map((line) => (
+              <tr key={line.leaveTypeId}>
+                <TypeCell name={line.name} basis={line.countingBasisLabel} />
+                {line.byMonth.map((figure, index) => (
+                  <td key={report.months[index]}>{days(figure)}</td>
+                ))}
+                <td>
+                  <b>{days(line.days)}</b>
+                </td>
+                <td>{line.requests}</td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Board>
+    </>
+  );
+}
+
+/**
+ * Days per month as small columns, one series in the accent. The table under it carries every
+ * figure, so the hover readout only adds to it.
+ */
+function MonthBars({ months, values, unit }: { months: string[]; values: number[]; unit: string }) {
+  const top = Math.max(0, ...values);
+
+  if (months.length === 0) {
+    return null;
+  }
+
+  return (
+    <figure className="month-bars">
+      <div className="month-bars-plot" role="img" aria-label="Days by month, as in the table below">
+        {values.map((value, index) => {
+          const label = `${monthLabel(months[index] ?? '')}: ${days(value)} ${unit.toLowerCase()}`;
+
+          return (
+            <span key={months[index]} className="month-bars-slot" data-tip={label}>
+              {value > 0 ? (
+                <span
+                  className="month-bars-bar"
+                  style={{ height: `${String(Math.max(6, (value / top) * 100))}%` }}
+                />
+              ) : null}
+            </span>
+          );
+        })}
+      </div>
+      <figcaption>
+        <span>{monthLabel(months[0] ?? '')}</span>
+        <span>{monthLabel(months[months.length - 1] ?? '')}</span>
+      </figcaption>
+    </figure>
   );
 }
 
 /* --------------------------------------------------------------------- overdue */
 
 function Overdue({ report }: { report: OverdueRequestsReport }) {
+  const longest = report.requests.reduce((most, one) => Math.max(most, one.daysWaiting), 0);
+  const waitingOn = (desk: Desk | null) =>
+    String(report.requests.filter((one) => one.awaiting === desk).length);
+  const nobody = report.requests.some((one) => one.awaiting === null);
+
   return (
-    <Section
-      title="Waiting for a decision"
-      aside={`longer than ${String(report.turnaroundDays)} days, as at ${day(report.asAt)}`}
-    >
-      {report.requests.length === 0 ? (
-        <p className="muted">Nothing has waited longer than the turnaround.</p>
-      ) : (
-        <Table
-          head={[
-            'Who',
-            'Department',
-            'Leave',
-            'Dates',
-            'Days',
-            'Asked on',
-            'Waiting',
-            'Waiting on',
+    <>
+      <SummaryCards>
+        <SummaryCard
+          icon="approvals"
+          title="Waiting too long"
+          figure={String(report.requests.length)}
+          caption={`longer than ${String(report.turnaroundDays)} days, as at ${day(report.asAt)}`}
+        />
+        <SummaryCard
+          icon="history"
+          title="Longest wait"
+          figure={String(longest)}
+          caption={longest === 1 ? 'day' : 'days'}
+        />
+        <SummaryCard
+          icon="stage"
+          title="Waiting on"
+          wide
+          parts={[
+            { label: DESKS.MANAGER, figure: waitingOn('MANAGER'), tone: 'blue' },
+            { label: DESKS.HR, figure: waitingOn('HR'), tone: 'green' },
+            { label: DESKS.CEO, figure: waitingOn('CEO'), tone: 'sky' },
+            ...(nobody
+              ? [{ label: 'Nobody to approve', figure: waitingOn(null), tone: 'warn' as const }]
+              : []),
           ]}
-        >
-          {report.requests.map((one) => (
-            <tr key={one.requestId}>
-              <th scope="row">{one.name}</th>
-              <td className="is-text">{one.department}</td>
-              <td className="is-text">{one.typeName}</td>
-              <td className="is-text">{period(one.from, one.to)}</td>
-              <td>{days(one.days)}</td>
-              <td className="is-text">{day(one.submittedOn)}</td>
-              <td>
-                <b>{one.daysWaiting}</b>
-              </td>
-              <td className="is-text">
-                {one.awaiting === null ? 'Nobody to approve' : DESKS[one.awaiting]}
-              </td>
-            </tr>
-          ))}
-        </Table>
-      )}
-    </Section>
+        />
+      </SummaryCards>
+
+      <Board title="Waiting for a decision">
+        {report.requests.length === 0 ? (
+          <Empty said="Nothing has waited longer than the turnaround." />
+        ) : (
+          <Table
+            head={[
+              'Who',
+              'Department',
+              'Leave',
+              'Dates',
+              'Days',
+              'Asked on',
+              'Waiting',
+              'Waiting on',
+            ]}
+            text={[0, 1, 2, 3, 5, 7]}
+          >
+            {report.requests.map((one) => (
+              <tr key={one.requestId}>
+                <th scope="row">{one.name}</th>
+                <td className="is-text">{one.department}</td>
+                <td className="is-text">{one.typeName}</td>
+                <td className="is-text">{period(one.from, one.to)}</td>
+                <td>{days(one.days)}</td>
+                <td className="is-text">{day(one.submittedOn)}</td>
+                <td>
+                  <b>{one.daysWaiting}</b>
+                </td>
+                <td className="is-text">
+                  {one.awaiting === null ? 'Nobody to approve' : DESKS[one.awaiting]}
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Board>
+    </>
   );
 }
 
@@ -376,16 +552,29 @@ function Overdue({ report }: { report: OverdueRequestsReport }) {
 function Usage({ report }: { report: LeaveUsageReport }) {
   return (
     <>
-      <Section title="Took none" aside={`given days in ${report.year.label} and took none of them`}>
-        <People lines={report.zero} empty="Everybody given days has taken some." withType />
-      </Section>
+      <SummaryCards>
+        <SummaryCard
+          icon="unpaid"
+          title="Took none"
+          figure={String(report.zero.length)}
+          caption={`given days in ${report.year.label} and took none`}
+        />
+        <SummaryCard
+          icon="up"
+          title="Took more than given"
+          figure={String(report.excessive.length)}
+          caption="taken is more than granted, carried and adjusted"
+          overdrawn={report.excessive.length > 0}
+        />
+      </SummaryCards>
 
-      <Section
-        title="Took more than given"
-        aside="taken is more than granted, carried and adjusted"
-      >
-        <People lines={report.excessive} empty="Nobody took more than they were given." withType />
-      </Section>
+      <Board title="Took none" aside={report.year.label}>
+        <People lines={report.zero} empty="Everybody given days has taken some." />
+      </Board>
+
+      <Board title="Took more than given" aside={report.year.label}>
+        <People lines={report.excessive} empty="Nobody took more than they were given." />
+      </Board>
     </>
   );
 }
@@ -395,71 +584,51 @@ function Usage({ report }: { report: LeaveUsageReport }) {
 function CarriedOver({ report }: { report: CarriedOverReport }) {
   return (
     <>
-      <p className="rules">
-        <Icon name="info" />
-        Carry over is uncapped, so these figures can be any size. FR 36a.
-      </p>
-
-      <Section title={`Carried into ${report.year.label}`}>
+      <SummaryCards>
         {report.totals.length === 0 ? (
-          <p className="muted">Nothing was carried into this year.</p>
+          <SummaryCard
+            icon="annual"
+            title={`Carried into ${report.year.label}`}
+            figure="0"
+            caption="nothing was carried into this year"
+          />
         ) : (
-          <Table head={['Leave type', 'People', 'Carried']}>
-            {report.totals.map((total) => (
-              <tr key={total.leaveTypeId}>
-                <TypeCell name={total.name} basis={total.countingBasisLabel} />
-                <td>{total.people}</td>
-                <td>
-                  <b>{days(total.carriedOver)}</b>
-                </td>
-              </tr>
-            ))}
-          </Table>
+          report.totals.map((total) => (
+            <SummaryCard
+              key={total.leaveTypeId}
+              icon={iconForLeaveType(total.name)}
+              title={total.name}
+              figure={days(total.carriedOver)}
+              caption={`${total.countingBasisLabel.toLowerCase()} carried, by ${String(total.people)} ${total.people === 1 ? 'person' : 'people'}`}
+            />
+          ))
         )}
-      </Section>
+      </SummaryCards>
 
-      {report.balances.length === 0 ? null : (
-        <Section title="Balances">
-          <People lines={report.balances} empty="" withType />
-        </Section>
-      )}
+      <Board title="Balances" aside={`carried into ${report.year.label}`}>
+        <People lines={report.balances} empty="Nothing was carried into this year." />
+      </Board>
     </>
   );
 }
 
 /* --------------------------------------------------------------------- shared */
 
-function People({
-  lines,
-  empty,
-  withType = false,
-}: {
-  lines: PersonLine[];
-  empty: string;
-  withType?: boolean;
-}) {
+function People({ lines, empty }: { lines: PersonLine[]; empty: string }) {
   if (lines.length === 0) {
-    return <p className="muted">{empty}</p>;
+    return <Empty said={empty} />;
   }
 
   return (
     <Table
-      head={[
-        'Who',
-        'Department',
-        ...(withType ? ['Leave'] : []),
-        'Given',
-        'Carried',
-        'Taken',
-        'Held',
-        'Left',
-      ]}
+      head={['Who', 'Department', 'Leave', 'Given', 'Carried', 'Taken', 'Held', 'Left']}
+      text={[0, 1, 2]}
     >
       {lines.map((line) => (
         <tr key={`${line.employeeId}-${line.leaveTypeId}`}>
           <th scope="row">{line.name}</th>
           <td className="is-text">{line.department}</td>
-          {withType ? <td className="is-text">{line.typeName}</td> : null}
+          <td className="is-text">{line.typeName}</td>
           <td>{days(line.given)}</td>
           <td>{days(line.carriedOver)}</td>
           <td>{days(line.taken)}</td>
@@ -471,37 +640,108 @@ function People({
   );
 }
 
-function Section({
+function SummaryCards({ children }: { children: ReactNode }) {
+  return <ul className="summary-cards">{children}</ul>;
+}
+
+interface Part {
+  label: string;
+  figure: string;
+  tone: 'blue' | 'green' | 'sky' | 'warn';
+}
+
+/** A titled card: a headline figure, its parts as small tiles, or both. */
+function SummaryCard({
+  icon,
   title,
-  aside,
+  figure,
+  caption,
+  parts,
+  overdrawn = false,
+  wide = false,
   children,
 }: {
+  icon: IconName;
   title: string;
-  aside?: string;
-  children: React.ReactNode;
+  figure?: string;
+  caption?: string;
+  parts?: Part[];
+  overdrawn?: boolean;
+  /** Spans two columns, for a card that is only parts. */
+  wide?: boolean;
+  children?: ReactNode;
 }) {
   return (
-    <section className="ruleset">
-      <h2>
+    <li className={wide ? 'summary-card is-wide' : 'summary-card'}>
+      <div className="summary-card-head">
         <span className="chip">
-          <Icon name="report" />
+          <Icon name={icon} />
         </span>
-        {title}
+        <h3>{title}</h3>
+      </div>
+
+      {figure === undefined ? null : (
+        <p className={overdrawn ? 'summary-figure overdrawn' : 'summary-figure'}>
+          <b>{figure}</b>
+          {caption === undefined ? null : <span>{caption}</span>}
+        </p>
+      )}
+
+      {parts === undefined ? null : (
+        <ul className="summary-parts">
+          {parts.map((part) => (
+            <li key={part.label} className={`is-${part.tone}`}>
+              <b>{part.figure}</b>
+              <span>{part.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {children}
+    </li>
+  );
+}
+
+function Board({ title, aside, children }: { title: string; aside?: string; children: ReactNode }) {
+  return (
+    <section className="board">
+      <div className="board-head">
+        <h2>{title}</h2>
         {aside === undefined ? null : <span className="muted">{aside}</span>}
-      </h2>
+      </div>
       {children}
     </section>
   );
 }
 
-function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+/** Nothing to show, said in the space the table would have taken. */
+function Empty({ said }: { said: string }) {
+  return (
+    <div className="empty-state">
+      <Icon name="report" />
+      <p>{said}</p>
+    </div>
+  );
+}
+
+/** `text` is which columns hold words, left aligned; the rest are figures. */
+function Table({
+  head,
+  text = [0],
+  children,
+}: {
+  head: string[];
+  text?: number[];
+  children: ReactNode;
+}) {
   return (
     <div className="report-table">
-      <table className="figures-table">
+      <table className="data-table is-figures">
         <thead>
           <tr>
             {head.map((label, index) => (
-              <th key={label} scope="col" className={index === 0 ? 'is-text' : undefined}>
+              <th key={label} scope="col" className={text.includes(index) ? 'is-text' : undefined}>
                 {label}
               </th>
             ))}
@@ -565,10 +805,13 @@ async function reportFor(id: ReportId, query: ReportQuery): Promise<Loaded> {
 
 function Skeletons() {
   return (
-    <ul className="cards">
-      {[0, 1, 2].map((one) => (
-        <li key={one} className="skeleton is-short" />
-      ))}
-    </ul>
+    <>
+      <ul className="summary-cards" aria-hidden="true">
+        {[0, 1, 2, 3].map((one) => (
+          <li key={one} className="skeleton stat-skeleton" />
+        ))}
+      </ul>
+      <div className="skeleton is-tall" />
+    </>
   );
 }
