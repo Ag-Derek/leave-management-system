@@ -9,7 +9,9 @@ export interface Attribution {
 }
 
 /** What happened to the record. */
-export type AuditAction = 'CREATE' | 'UPDATE' | 'DELETE';
+export const AUDIT_ACTIONS = ['CREATE', 'UPDATE', 'DELETE'] as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 /** The tables an entry can be about. */
 export const AUDITED_ENTITIES = [
@@ -127,8 +129,17 @@ const LONGEST_ENTITY_ID = 64;
 export interface AuditSearch {
   entity?: AuditedEntity;
   entityId?: string;
+  action?: AuditAction;
   from?: CalendarDate;
   to?: CalendarDate;
+}
+
+/** How many entries the whole log holds, and how many since the start of each period. */
+export interface AuditTally {
+  total: number;
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
 }
 
 /** A search the log cannot answer, naming the field. */
@@ -146,6 +157,7 @@ export class InvalidAuditSearch extends Error {
 export function readAuditSearch(asked: Partial<Record<keyof AuditSearch, string>>): AuditSearch {
   const entity = filled(asked.entity);
   const entityId = filled(asked.entityId);
+  const action = filled(asked.action);
   const from = filled(asked.from);
   const to = filled(asked.to);
 
@@ -162,6 +174,10 @@ export function readAuditSearch(asked: Partial<Record<keyof AuditSearch, string>
     throw new InvalidAuditSearch('entityId', 'That is not the id of a record.');
   }
 
+  if (action !== undefined && !isAuditAction(action)) {
+    throw new InvalidAuditSearch('action', 'Choose created, changed or removed.');
+  }
+
   if (from !== undefined && !isCalendarDate(from)) {
     throw new InvalidAuditSearch('from', 'A date is written as YYYY-MM-DD.');
   }
@@ -174,11 +190,15 @@ export function readAuditSearch(asked: Partial<Record<keyof AuditSearch, string>
     throw new InvalidAuditSearch('to', `The search ends on ${to}, before it starts on ${from}.`);
   }
 
-  return { entity, entityId, from, to };
+  return { entity, entityId, action, from, to };
 }
 
 function isAuditedEntity(value: string): value is AuditedEntity {
   return (AUDITED_ENTITIES as readonly string[]).includes(value);
+}
+
+function isAuditAction(value: string): value is AuditAction {
+  return (AUDIT_ACTIONS as readonly string[]).includes(value);
 }
 
 /** Trimmed, with blank as not sent. */

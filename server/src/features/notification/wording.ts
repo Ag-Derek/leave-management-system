@@ -1,5 +1,6 @@
 /** The words each email is sent in, and HR's changes to them. FR 61, FR 59. */
 
+import { literal } from './formatting.js';
 import type { NoticeEvent } from './notification.js';
 
 /** How every message ends. The part a reader checks the email is genuine by. */
@@ -377,10 +378,11 @@ export function placeholdersOffered(name: EmailName): Placeholder[] {
 export function fillIn(wording: Wording, values: PlaceholderValues): Wording {
   return {
     subject: fill(wording.subject, values).replace(/\s+/g, ' ').trim(),
+    // Values go into the message literally, so a comment's `_` or `**` formats nothing.
     body: wording.body
       .replace(/\r\n?/g, '\n')
       .split(PARAGRAPH_BREAK)
-      .map((paragraph) => fill(paragraph, values))
+      .map((paragraph) => fill(paragraph, values, literal))
       .filter((paragraph) => paragraph.trim() !== '')
       .join('\n\n'),
   };
@@ -453,8 +455,16 @@ function requireKnownPlaceholders(
   }
 }
 
-function fill(text: string, values: PlaceholderValues): string {
-  return text.replace(PLACEHOLDER, (whole, named: string) => valueOf(named, values) ?? whole);
+function fill(
+  text: string,
+  values: PlaceholderValues,
+  as: (value: string) => string = (value) => value,
+): string {
+  return text.replace(PLACEHOLDER, (whole, named: string) => {
+    const value = valueOf(named, values);
+
+    return value === undefined ? whole : as(value);
+  });
 }
 
 /** The value, capitalised where the placeholder was. */

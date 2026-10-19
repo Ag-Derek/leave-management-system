@@ -129,3 +129,19 @@ export function moment(iso: string): string {
     ? iso
     : at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
+
+/** {@link moment}'s date half, for a column that sets the time under it. */
+export function momentDate(iso: string): string {
+  const at = new Date(iso);
+
+  return Number.isNaN(at.getTime())
+    ? iso
+    : at.toLocaleDateString(undefined, { dateStyle: 'medium' });
+}
+
+/** {@link moment}'s time half. Empty for a malformed instant, which {@link momentDate} shows. */
+export function momentTime(iso: string): string {
+  const at = new Date(iso);
+
+  return Number.isNaN(at.getTime()) ? '' : at.toLocaleTimeString(undefined, { timeStyle: 'short' });
+}

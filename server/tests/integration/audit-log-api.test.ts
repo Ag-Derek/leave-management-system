@@ -72,6 +72,7 @@ interface JsonAuditLog {
   }[];
   entities: { name: string; label: string }[];
   moreThanShown: boolean;
+  tally: { total: number; today: number; thisWeek: number; thisMonth: number };
 }
 
 beforeAll(async () => {
@@ -246,6 +247,41 @@ describe('searching by date', () => {
     const response = await send('GET', '/api/audit?from=2026-03-02&to=2026-03-01', people.headOfHr);
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe('searching by what happened', () => {
+  it('finds only that kind of change', async () => {
+    await retitle(people.officer, 'Senior Operations Officer', people.headOfHr);
+
+    const narrowed = { entity: 'employee', entityId: people.officer };
+
+    const changed = await search({ ...narrowed, action: 'UPDATE' });
+    expect(changed.entries).not.toHaveLength(0);
+    expect(changed.entries.every((one) => one.action === 'UPDATE')).toBe(true);
+
+    expect((await search({ ...narrowed, action: 'DELETE' })).entries).toHaveLength(0);
+  });
+
+  it('refuses an action the log does not record, naming the field', async () => {
+    const response = await send('GET', '/api/audit?action=ARCHIVE', people.headOfHr);
+
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { field: string }).field).toBe('action');
+  });
+});
+
+describe('the tally', () => {
+  it('counts the whole log, with today inside both the week and the month', async () => {
+    await retitle(people.officer, 'Senior Operations Officer', people.headOfHr);
+
+    const { tally } = await search({ entity: 'employee', entityId: people.officer });
+
+    // A week can start in the previous month, so the two are not compared.
+    expect(tally.today).toBeGreaterThanOrEqual(1);
+    expect(tally.thisWeek).toBeGreaterThanOrEqual(tally.today);
+    expect(tally.thisMonth).toBeGreaterThanOrEqual(tally.today);
+    expect(tally.total).toBeGreaterThanOrEqual(Math.max(tally.thisWeek, tally.thisMonth));
   });
 });
 

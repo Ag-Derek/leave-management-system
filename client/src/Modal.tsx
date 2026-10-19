@@ -17,6 +17,7 @@ export function Modal({
   title,
   tags,
   actions,
+  wide = false,
   onClose,
   children,
 }: {
@@ -25,6 +26,8 @@ export function Modal({
   tags?: ReactNode;
   /** The buttons at the foot. Left out where there is nothing to do but read. */
   actions?: ReactNode;
+  /** Room for an editor beside its notes. */
+  wide?: boolean;
   onClose: () => void;
   children: ReactNode;
 }) {
@@ -41,7 +44,7 @@ export function Modal({
   return (
     <dialog
       ref={dialog}
-      className="modal"
+      className={wide ? 'modal is-wide' : 'modal'}
       onClose={onClose}
       /* The backdrop is the dialog's own box, so a press that lands on the element itself
          rather than on anything inside it is a press outside the panel. */

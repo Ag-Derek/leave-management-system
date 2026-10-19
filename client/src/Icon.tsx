@@ -39,6 +39,9 @@ export type IconName =
   | 'report'
   | 'download'
   | 'history'
+  | 'search'
+  | 'mail'
+  | 'list'
   /* Showing and hiding a password as it is typed. */
   | 'eye'
   | 'eye-off'
@@ -101,6 +104,11 @@ const PATHS: Record<IconName, string> = {
   download: 'M12 4v12m0 0-4-4m4 4 4-4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2',
   /** The audit log: a clock turning back. */
   history: 'M3.5 12a8.5 8.5 0 1 0 2.5-6M3.5 3.5V8H8M12 7.5V12l3 2',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+  /** An email: an envelope. */
+  mail: 'M3 6h18v12H3zM3 7l9 6.5L21 7',
+  /** A bulleted list. */
+  list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
   /** The password is hidden; pressing shows it. */
   eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   /** The password is showing; pressing hides it again. */

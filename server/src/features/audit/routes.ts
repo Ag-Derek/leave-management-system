@@ -23,9 +23,10 @@ export function auditRoutes({ audit }: AuditRoutes): Router {
   routes.get('/audit', (request: Request, response: Response, next) => {
     void audit
       .search(actorOf(response), auditQueryOf(request))
-      .then(({ entries, moreThanShown }) => {
+      .then(({ entries, moreThanShown, tally }) => {
         response.json({
           entries: entries.map(entryAsJson),
+          tally,
           entities: AUDITED_ENTITIES.map((name) => ({
             name,
             label: AUDITED_ENTITY_LABELS[name],
@@ -71,6 +72,7 @@ function auditQueryOf(request: Request): AuditQuery {
   return {
     entity: oneStringIn(request, 'entity'),
     entityId: oneStringIn(request, 'entityId'),
+    action: oneStringIn(request, 'action'),
     from: oneStringIn(request, 'from'),
     to: oneStringIn(request, 'to'),
   };

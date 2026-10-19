@@ -16,7 +16,13 @@ import {
   type Wording,
 } from './wording.js';
 import { previewOf } from './wording-preview.js';
+import { asHtml, asPlainText } from './formatting.js';
 import type { EmailWordingRepository, SavedWording } from './wording.db.js';
+
+/** A filled in email: the plain text part and the HTML part. */
+export interface EmailPreview extends Wording {
+  html: string;
+}
 
 /** One email as the screen needs it. */
 export interface EmailWording {
@@ -85,12 +91,14 @@ export class EmailWordingService {
     actor: Actor,
     name: unknown,
     wording: { subject?: unknown; body?: unknown },
-  ): Promise<Wording> {
+  ): Promise<EmailPreview> {
     const email = readEmailName(name);
 
     this.guard.enforce(notificationPolicy.readWording(actor));
 
-    return previewOf(email, validateWording(email, wording));
+    const filled = previewOf(email, validateWording(email, wording));
+
+    return { subject: filled.subject, body: asPlainText(filled.body), html: asHtml(filled.body) };
   }
 }
 

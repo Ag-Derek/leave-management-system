@@ -1338,9 +1338,14 @@ export async function putBackEmailWording(name: string): Promise<EmailWording> {
   return request<EmailWording>('DELETE', `/api/email-wording/${encodeURIComponent(name)}`);
 }
 
+/** A filled in email: `body` is the plain text part, `html` the formatted one. */
+export interface EmailPreview extends Wording {
+  html: string;
+}
+
 /** The wording filled in on a made up request. Saves nothing. */
-export async function previewEmail(name: string, wording: Wording): Promise<Wording> {
-  return request<Wording>(
+export async function previewEmail(name: string, wording: Wording): Promise<EmailPreview> {
+  return request<EmailPreview>(
     'POST',
     `/api/email-wording/${encodeURIComponent(name)}/preview`,
     wording,
@@ -1796,8 +1801,17 @@ export interface AuditLogEntry {
 export interface AuditSearch {
   entity?: string;
   entityId?: string;
+  action?: '' | AuditLogEntry['action'];
   from?: string;
   to?: string;
+}
+
+/** The whole log's counts, whatever was searched for. Week starts Monday. */
+export interface AuditTally {
+  total: number;
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
 }
 
 export interface AuditLog {
@@ -1806,6 +1820,7 @@ export interface AuditLog {
   entities: { name: string; label: string; pickable: boolean }[];
   longestSearch: number;
   moreThanShown: boolean;
+  tally: AuditTally;
 }
 
 export async function searchAuditLog(asked: AuditSearch): Promise<AuditLog> {

@@ -8,6 +8,7 @@ import {
   type AuditEntry,
   type AuditRecordOption,
   type AuditSearch,
+  type AuditTally,
   InvalidAuditSearch,
   isPickableEntity,
   LONGEST_SEARCH,
@@ -27,6 +28,8 @@ export interface AuditSearchResult {
   entries: NamedAuditEntry[];
   /** More matched than {@link LONGEST_SEARCH}. */
   moreThanShown: boolean;
+  /** The whole log, whatever was searched for. */
+  tally: AuditTally;
 }
 
 export class AuditService {
@@ -121,11 +124,15 @@ export class AuditService {
     this.guard.enforce(auditPolicy.search(actor));
 
     const search = readAuditSearch(asked);
-    const found = await this.entries.search(search, zone, LONGEST_SEARCH + 1);
+    const [found, tally] = await Promise.all([
+      this.entries.search(search, zone, LONGEST_SEARCH + 1),
+      this.entries.tally(zone),
+    ]);
 
     return {
       entries: found.slice(0, LONGEST_SEARCH),
       moreThanShown: found.length > LONGEST_SEARCH,
+      tally,
     };
   }
 

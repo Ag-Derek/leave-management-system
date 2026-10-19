@@ -15,6 +15,7 @@ import {
   type WhatHappened,
 } from './notification.js';
 import { type EmailName, emailFor, type Wording } from './wording.js';
+import { asHtml, asPlainText } from './formatting.js';
 import { type ReminderSent, reminderOf } from './reminder.js';
 import {
   DRAIN_LIMIT,
@@ -443,7 +444,7 @@ export class NotificationService {
 
 /** The notice, as an envelope round the message. */
 export function noticeEmail(to: string, notice: Notice): Mail {
-  return { to, subject: notice.subject, text: notice.body };
+  return { to, subject: notice.subject, text: asPlainText(notice.body), html: asHtml(notice.body) };
 }
 
 /** What went wrong, in words, from something that may not be an `Error`. */

@@ -783,7 +783,7 @@ describe('the table itself', () => {
 /* ----------------------------------------------------------------- the envelope */
 
 describe('the email', () => {
-  it('is the notice and nothing added to it', async () => {
+  it('is the notice, as plain text and as formatted HTML', async () => {
     await submit();
 
     const [notice] = await noticesFor();
@@ -793,8 +793,8 @@ describe('the email', () => {
       to: 'adwoa.frimpong@rematholdings.com',
       subject: notice.subject,
       text: notice.body,
+      html: expect.stringContaining('<p style="margin:0 0 1em">Hello Adwoa,</p>') as unknown,
     });
-    expect(mail).not.toHaveProperty('html');
   });
 
   /* No link, for the reason codeEmail carries none: an email about leave that trains staff
@@ -806,6 +806,7 @@ describe('the email', () => {
 
     for (const mail of mailer.sent) {
       expect(mail.text).not.toMatch(/https?:\/\//);
+      expect(mail.html).not.toMatch(/https?:\/\/|<a\b/);
     }
   });
 });

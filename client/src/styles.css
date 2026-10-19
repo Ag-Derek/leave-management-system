@@ -3880,98 +3880,663 @@ select[aria-invalid='true'] {
 
 /* ------------------------------------------ the wording of the emails. FR 61 */
 
-.pick-email {
-  max-width: 26rem;
-  margin: 0 0 var(--gap);
+.wording-table .email-name {
+  width: 32%;
+  min-width: 14rem;
+  font-weight: 600;
 }
 
-.policy.wording > label {
-  max-width: none;
+/* A long recipient list wraps inside its pill rather than widening the column. */
+/* Wide enough that the short recipients stay on one line. */
+.wording-table .sent-to {
+  width: 12rem;
+  min-width: 12rem;
 }
 
-.wording textarea {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+.wording-table .sent-to .tag {
+  display: inline-block;
+  max-width: 11rem;
+  border-radius: 0.75rem;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+/* Takes the width left over; `max-width: 0` is what lets the text inside it truncate. */
+.wording-table .wording-words {
+  width: 45%;
+  max-width: 0;
+}
+
+.wording-table .clip {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+.edit-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.edit-button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+/* The editor, with the placeholders in a column beside it. */
+.wording-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: var(--gap-lg);
+  align-items: start;
+}
+
+.wording-editor > .notice {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Takes the editor's place, across both columns. */
+.wording-preview {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wording-preview > p {
+  margin: 0;
+}
+
+.wording-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.wording-editor textarea {
+  font-family: var(--face-figure);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.wording-placeholders {
+  padding: var(--gap);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--ink) 3%, var(--card));
+}
+
+.wording-placeholders h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--face-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.wording-placeholders > p {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.placeholder-groups {
+  max-height: 24rem;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+  overflow-y: auto;
+}
+
+.wording-placeholders h4 {
+  margin: var(--gap) 0 0.45rem;
+  font-family: var(--face-text);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.wording-placeholders h4:first-child {
+  margin-top: 0;
 }
 
 .placeholders {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.35rem;
-  margin: 0.5rem 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.placeholders li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
+/* One card per placeholder: the token, its meaning on one line, and a + to add it. */
+.placeholder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  background: var(--card);
+  text-align: left;
 }
 
-.placeholders button {
-  padding: 0.15rem 0.45rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8125rem;
+.placeholder:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
-.email-preview {
-  padding: var(--gap);
-  border: 1px dashed var(--line-strong);
+.placeholder-token {
+  font-family: var(--face-figure);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.placeholder-meaning {
+  grid-column: 1;
+  overflow: hidden;
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder-add {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  color: var(--ink-faint);
+}
+
+.placeholder-add svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.placeholder:hover:not(:disabled) .placeholder-add {
+  color: var(--accent);
+}
+
+.placeholder-tip {
+  margin: 0.75rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+}
+
+.placeholder-tip code {
+  font-family: var(--face-figure);
+  color: var(--ink-soft);
+}
+
+@media (max-width: 52rem) {
+  .wording-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* A filled in email, set out as an inbox shows one. */
+.email-frame {
+  border: 1px solid var(--line);
   border-radius: var(--radius-small);
+  overflow: hidden;
+  background: var(--card);
 }
 
-.email-preview p {
-  margin: 0 0 0.75rem;
+.email-frame header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem var(--gap);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 3%, var(--card));
 }
 
-.email-preview pre {
-  margin: 0;
-  font: inherit;
-  white-space: pre-wrap;
+.email-frame header .chip {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* White in both themes, as the email itself is. */
+.email-frame iframe {
+  display: block;
+  width: 100%;
+  border: none;
+  background: #ffffff;
+}
+
+/* The message box, with its formatting bar joined on top. */
+.message-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.editor-box {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-small);
+  background: var(--card);
+}
+
+.editor-box:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.editor-box textarea {
+  border: none;
+  border-radius: 0 0 var(--radius-small) var(--radius-small);
+}
+
+/* The box draws the ring instead. */
+.editor-box textarea:focus-visible {
+  outline: none;
+}
+
+.format-bar {
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.format-bar button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: Georgia, serif;
+  font-size: 1rem;
+}
+
+.format-bar button:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--ink) 7%, var(--card));
+  color: var(--ink);
+}
+
+.format-bar svg {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 /* NFR AUD 01. The audit log. */
 
-/* Four pickers and a button are wider than the room left beside the sentence, so the shared
-   `margin-left: auto` was stranding the whole set at the right of a row of its own. A full
-   basis takes that row deliberately and starts it where the sentence starts. */
-.pagehead .controls.audit-filters {
-  flex-basis: 100%;
-  margin-left: 0;
+.entry-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: var(--gap);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--ink) 3%, var(--card));
 }
 
-.audit-table td {
-  vertical-align: top;
-}
-
-.audit-table td small {
-  display: block;
+.entry-facts dt {
+  font-size: 0.75rem;
   color: var(--ink-faint);
 }
 
-.audit-changes {
-  display: grid;
-  gap: 0.2rem;
+.entry-facts dd {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: 0.8125rem;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
-.audit-changes .was {
-  color: var(--ink-faint);
-  text-decoration: line-through;
+.entry-facts code {
+  font-family: var(--face-figure);
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
 }
 
-/* A field that was emptied. Italic and faint so it reads as the absence of a value rather than
-   as a value that happens to be the word. */
-.audit-changes .empty {
+.change-table {
+  min-width: 0;
+}
+
+.change-table tbody th {
+  width: 30%;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.change-table td {
+  overflow-wrap: anywhere;
+}
+
+.change-table .was {
+  color: var(--ink-faint);
+}
+
+/* Emptied, as the absence of a value rather than the word. */
+.data-table .empty {
   color: var(--ink-faint);
   font-style: italic;
+}
+
+/* ------------------------------------------- stat tiles, filter bar, data tables */
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--gap);
+  margin: 0 0 var(--gap-lg);
+  padding: 0;
+  list-style: none;
+}
+
+.stat-tile {
+  --tone: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: var(--gap-lg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.stat-tile.is-blue {
+  --tone: var(--accent);
+}
+
+.stat-tile.is-green {
+  --tone: var(--go-ink);
+}
+
+.stat-tile.is-violet {
+  --tone: var(--who-2);
+}
+
+.stat-tile .chip {
+  margin-bottom: 0.75rem;
+  background: color-mix(in srgb, var(--tone) 10%, var(--card));
+  color: var(--tone);
+}
+
+.stat-figure {
+  font-family: var(--face-figure);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--tone);
+}
+
+.stat-label {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+.skeleton.stat-skeleton {
+  height: 9.75rem;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 var(--gap-lg);
+}
+
+.filter-bar > label {
+  flex: 1 1 10rem;
+}
+
+.filter-bar > .filter-search {
+  flex: 2 1 16rem;
+  position: relative;
+}
+
+.filter-bar input,
+.filter-bar select {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.filter-search svg {
+  position: absolute;
+  top: 50%;
+  left: 0.8rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.filter-search input {
+  padding-left: 2.4rem;
+}
+
+/* A short word inside the box, before the control. */
+label.field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-small);
+  background: var(--card);
+}
+
+.field-inline > span {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.field-inline input,
+.field-inline select {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+}
+
+.field-inline:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The box draws the ring instead. */
+.field-inline input:focus-visible,
+.field-inline select:focus-visible {
+  outline: none;
+}
+
+/* A table in a card of its own, with a heading over it. */
+.board {
+  margin: 0 0 var(--gap-lg);
+  padding: var(--gap-lg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 var(--gap);
+}
+
+.board-head h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.board > .report-table {
+  margin: 0;
+}
+
+.board-empty {
+  margin: var(--gap) 0;
+}
+
+.board[aria-busy='true'] .data-table {
+  opacity: 0.6;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 44rem;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table thead th {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table td,
+.data-table tbody th {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--ink) 3%, var(--card));
+}
+
+.data-table tr.is-openable {
+  cursor: pointer;
+}
+
+/* A bold line and a faint one under it. */
+.data-table .when > *,
+.data-table .what > * {
+  display: block;
+}
+
+.data-table .when > span,
+.data-table .what > span {
+  font-weight: 600;
+}
+
+.data-table .when > small,
+.data-table .what > small {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.data-table .when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table .tag {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.65rem;
+}
+
+.data-table .is-action {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding-top: var(--gap);
+  border-top: 1px solid var(--line);
+}
+
+.pager .field-inline {
+  margin-right: auto;
+}
+
+.pager .iconic {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.pager .is-next svg {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 34rem) {
+  .board {
+    padding: var(--gap);
+  }
+}
+
+/* The wide dialog, for an editor with notes beside it. */
+.modal.is-wide {
+  width: min(64rem, calc(100vw - 2rem));
+}
+
+/* The buttons as the dialog's own third row, rather than stuck inside the body. */
+.modal {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.modal > .modal-actions {
+  position: static;
+  margin: 0;
+}
+
+.modal-actions .linkish {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.modal-actions .linkish svg,
+.modal-actions .primary svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.modal-actions .primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.modal-actions-end {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 /* ------------------------------------------------------------------ HR settings

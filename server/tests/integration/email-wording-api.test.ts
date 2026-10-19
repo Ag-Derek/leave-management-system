@@ -256,10 +256,11 @@ describe('previewing and putting back', () => {
       people.hrOfficer,
       REWORDED,
     );
-    const filled = (await response.json()) as { subject: string; body: string };
+    const filled = (await response.json()) as { subject: string; body: string; html: string };
 
     expect(response.status).toBe(200);
     expect(filled.subject).toBe('We have your request for 2 March 2026 to 10 March 2026');
+    expect(filled.html).toContain('<p style="margin:0 0 1em">');
     expect(await new NotificationRepository(db).wordingFor('SUBMITTED')).toBeUndefined();
   });
 

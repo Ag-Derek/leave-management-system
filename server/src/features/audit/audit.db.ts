@@ -9,6 +9,7 @@ import type {
   AuditEntry,
   AuditRecordOption,
   AuditSearch,
+  AuditTally,
   NamedAuditEntry,
   RecordSource,
 } from './audit.js';
@@ -106,6 +107,9 @@ export class AuditRepository {
     }
     if (search.entityId !== undefined) {
       query = query.where('audit_log.entity_id', '=', search.entityId);
+    }
+    if (search.action !== undefined) {
+      query = query.where('audit_log.action', '=', search.action);
     }
     if (search.from !== undefined) {
       query = query.where(
@@ -224,6 +228,29 @@ export class AuditRepository {
         return rows.map((row) => ({ id: row.id, label: row.label }));
       }
     }
+  }
+
+  /** Counts across the whole log, with today, the week (from Monday) and the month in `zone`. */
+  async tally(zone: string): Promise<AuditTally> {
+    const since = (unit: 'day' | 'week' | 'month') =>
+      sql<string>`count(*) filter (where occurred_at >= date_trunc(${unit}, now() AT TIME ZONE ${zone}) AT TIME ZONE ${zone})`;
+
+    const row = await this.db
+      .selectFrom('audit_log')
+      .select((eb) => [
+        eb.fn.countAll<string>().as('total'),
+        since('day').as('today'),
+        since('week').as('this_week'),
+        since('month').as('this_month'),
+      ])
+      .executeTakeFirstOrThrow();
+
+    return {
+      total: Number(row.total),
+      today: Number(row.today),
+      thisWeek: Number(row.this_week),
+      thisMonth: Number(row.this_month),
+    };
   }
 
   /** How many entries there are for a record. */
