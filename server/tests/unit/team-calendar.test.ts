@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { type Actor, signedInAs } from '../../src/auth/actor.js';
-import type { Department } from '../../src/features/department/department.js';
-import type { Employee } from '../../src/features/employee/employee.js';
-import type { LeaveRequest } from '../../src/features/leave-request/leave-request.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import { teamPolicy } from '../../src/features/team/policy.js';
+import { type Actor, signedInAs } from '../../src/core/auth/actor.js';
+import type { Department } from '../../src/core/organisation/department/department.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
+import type { LeaveRequest } from '../../src/apps/leave/leave-request/leave-request.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import { teamPolicy } from '../../src/apps/leave/team/policy.js';
 import {
   type TeamCalendarFacts,
   type TeamCalendarView,
   teamCalendarFor,
-} from '../../src/features/team/team-calendar.js';
+} from '../../src/apps/leave/team/team-calendar.js';
 
 /** Who is away and when, as rules. FR 57. */
 

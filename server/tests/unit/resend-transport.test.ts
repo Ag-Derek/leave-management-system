@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resendSends } from '../../src/mail/resend-transport.js';
+import { resendSends } from '../../src/core/notification/resend-transport.js';
 
 /**
  * Mail over HTTPS. NFR SEC 01.

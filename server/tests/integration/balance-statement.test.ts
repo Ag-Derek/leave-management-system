@@ -2,30 +2,30 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { DEFAULT_APPROVAL_CHAIN } from '../../src/features/leave-type/approval-chain.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { DEFAULT_APPROVAL_CHAIN } from '../../src/apps/leave/leave-type/approval-chain.js';
 import {
   type BalanceStatement,
   type BalanceStatementLine,
   NotOneOfTheirLeaveYears,
-} from '../../src/features/balance/balance-statement.js';
-import { EmployeeNotFound } from '../../src/features/employee/employee.js';
-import type { LeaveRequest } from '../../src/features/leave-request/leave-request.js';
+} from '../../src/apps/leave/balance/balance-statement.js';
+import { EmployeeNotFound } from '../../src/core/organisation/employee/employee.js';
+import type { LeaveRequest } from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   type DesksAvailable,
   NO_OCCUPANTS_NAMED,
-} from '../../src/features/leave-request/routing.js';
-import { LeaveYearNotFound } from '../../src/features/leave-year/leave-year.js';
-import { BalanceRepository } from '../../src/features/balance/balance.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { LeaveTypeRepository } from '../../src/features/leave-type/leave-type.db.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
-import { Transactions } from '../../src/db/transaction.js';
-import { BalanceService } from '../../src/features/balance/balance.service.js';
-import { BalanceStatementService } from '../../src/features/balance/balance-statement.service.js';
+} from '../../src/apps/leave/leave-request/routing.js';
+import { LeaveYearNotFound } from '../../src/apps/leave/leave-year/leave-year.js';
+import { BalanceRepository } from '../../src/apps/leave/balance/balance.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { LeaveTypeRepository } from '../../src/apps/leave/leave-type/leave-type.db.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
+import { Transactions } from '../../src/core/db/transaction.js';
+import { BalanceService } from '../../src/apps/leave/balance/balance.service.js';
+import { BalanceStatementService } from '../../src/apps/leave/balance/balance-statement.service.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /**
@@ -371,7 +371,7 @@ describe('whose statement it is', () => {
   });
 
   /**
-   * Silently, which is the whole of ../../src/auth/policy.ts's argument.
+   * Silently, which is the whole of ../../src/core/auth/policy.ts's argument.
    *
    * A colleague is told that no record they have access to matches, in the same words a
    * record that is not there produces — so the pair of them cannot be used to ask whether
@@ -388,7 +388,7 @@ describe('whose statement it is', () => {
   });
 
   /* Two levels down is not a direct report. The subtree is deliberately not FR 55's, and
-     the argument for stopping at one level is ../../src/features/employee/policy.ts's. */
+     the argument for stopping at one level is ../../src/core/organisation/employee/policy.ts's. */
   it('and not a skip level manager’s', async () => {
     await expect(statements.forEmployee(asTheirManager(), people.engineer)).rejects.toThrow(
       NotAuthorised,

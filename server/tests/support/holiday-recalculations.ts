@@ -1,20 +1,20 @@
 /** The recalculation door `buildApp` takes, built the one way. FR 25, §8.8. */
 
 import type { Kysely } from 'kysely';
-import type { Database } from '../../src/db/index.js';
-import type { Guard } from '../../src/auth/policy.js';
-import type { BalanceService } from '../../src/features/balance/balance.service.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { HolidayRepository } from '../../src/features/holiday/holiday.db.js';
-import { HolidayRecalculationRepository } from '../../src/features/holiday/recalculation.db.js';
-import { HolidayRecalculationService } from '../../src/features/holiday/recalculation.service.js';
-import { LeaveRequestRepository } from '../../src/features/leave-request/leave-request.db.js';
-import { LeaveTypeRepository } from '../../src/features/leave-type/leave-type.db.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
-import { earliestOpenDayFrom } from '../../src/features/leave-year/leave-year.service.js';
-import { NotificationRepository } from '../../src/features/notification/notification.db.js';
-import { NotificationService } from '../../src/features/notification/notification.service.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
+import type { Database } from '../../src/core/db/index.js';
+import type { Guard } from '../../src/core/auth/policy.js';
+import type { BalanceService } from '../../src/apps/leave/balance/balance.service.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { HolidayRepository } from '../../src/apps/leave/holiday/holiday.db.js';
+import { HolidayRecalculationRepository } from '../../src/apps/leave/holiday/recalculation.db.js';
+import { HolidayRecalculationService } from '../../src/apps/leave/holiday/recalculation.service.js';
+import { LeaveRequestRepository } from '../../src/apps/leave/leave-request/leave-request.db.js';
+import { LeaveTypeRepository } from '../../src/apps/leave/leave-type/leave-type.db.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
+import { earliestOpenDayFrom } from '../../src/apps/leave/leave-year/leave-year.service.js';
+import { NotificationRepository } from '../../src/apps/leave/notification/notification.db.js';
+import { NotificationService } from '../../src/apps/leave/notification/notification.service.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
 import { recordingMailer } from './recording-mailer.js';
 
 export function holidayRecalculationService(

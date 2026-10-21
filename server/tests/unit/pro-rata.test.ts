@@ -10,7 +10,7 @@ import {
   proRataDaysFor,
   ruleNamed,
   THE_RULE_IN_FORCE,
-} from '../../src/features/entitlement/pro-rata.js';
+} from '../../src/apps/leave/entitlement/pro-rata.js';
 
 /**
  * Pro rating an entitlement for part of a year. FR 29, FR 29a, §8.6d.

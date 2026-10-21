@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { LocalStorage } from '../../src/storage/local-storage.js';
-import { SupabaseStorage } from '../../src/storage/supabase-storage.js';
-import { createStorage, InvalidKey, ObjectNotFound } from '../../src/storage/index.js';
+import { LocalStorage } from '../../src/core/storage/local-storage.js';
+import { SupabaseStorage } from '../../src/core/storage/supabase-storage.js';
+import { createStorage, InvalidKey, ObjectNotFound } from '../../src/core/storage/index.js';
 
 /**
  * These touch a temporary directory rather than a database or a network, so

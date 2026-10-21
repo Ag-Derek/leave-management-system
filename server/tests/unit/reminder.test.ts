@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LeaveRequest } from '../../src/features/leave-request/leave-request.js';
+import type { LeaveRequest } from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   alreadyReminded,
   daysUntilItStarts,
@@ -7,8 +7,8 @@ import {
   REMINDER_EVENT,
   reminderOf,
   type WhatIsWaiting,
-} from '../../src/features/notification/reminder.js';
-import { summaryOf } from '../../src/features/notification/reminder.job.js';
+} from '../../src/apps/leave/notification/reminder.js';
+import { summaryOf } from '../../src/apps/leave/notification/reminder.job.js';
 
 /**
  * What an approver is chased with, every day until they decide. FR 50, FR 60.

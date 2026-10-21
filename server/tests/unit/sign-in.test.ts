@@ -9,8 +9,8 @@ import {
   SignInRefused,
   WeakPassword,
   whyNotSignIn,
-} from '../../src/features/sign-in/sign-in.js';
-import type { Employee, EmploymentStatus } from '../../src/features/employee/employee.js';
+} from '../../src/core/identity/sign-in/sign-in.js';
+import type { Employee, EmploymentStatus } from '../../src/core/organisation/employee/employee.js';
 
 /**
  * NFR SEC 01, the rules half.

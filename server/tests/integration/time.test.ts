@@ -2,9 +2,9 @@ import { Client } from 'pg';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import { type Kysely, sql } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { isCalendarDate } from '../../src/shared/time.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { isCalendarDate } from '../../src/core/calendar/time.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /**
@@ -274,7 +274,7 @@ describe('the session', () => {
    * The pool's half, on its own.
    *
    * The database setting is taken away for the length of this test, so that the
-   * only thing left putting the connection into UTC is ../../src/db/index.ts.
+   * only thing left putting the connection into UTC is ../../src/core/db/index.ts.
    * That is the layer that has to hold on a database somebody has restored from a
    * backup, or brought up before this migration, or on a host that would not
    * permit the ALTER DATABASE — which is exactly when nobody is looking.

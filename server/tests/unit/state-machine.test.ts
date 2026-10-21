@@ -1,15 +1,18 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { signedInAs } from '../../src/auth/actor.js';
-import { leaveRequestPolicy } from '../../src/features/leave-request/policy.js';
-import type { BalanceOwner } from '../../src/features/balance/policy.js';
-import { APPROVER_ROLES, type ApproverRole } from '../../src/features/leave-type/approval-chain.js';
-import type { DecidingAction } from '../../src/features/leave-request/leave-decision.js';
+import { signedInAs } from '../../src/core/auth/actor.js';
+import { leaveRequestPolicy } from '../../src/apps/leave/leave-request/policy.js';
+import type { BalanceOwner } from '../../src/apps/leave/balance/policy.js';
+import {
+  APPROVER_ROLES,
+  type ApproverRole,
+} from '../../src/apps/leave/leave-type/approval-chain.js';
+import type { DecidingAction } from '../../src/apps/leave/leave-request/leave-decision.js';
 import {
   type DesksAvailable,
   NO_OCCUPANTS_NAMED,
-} from '../../src/features/leave-request/routing.js';
+} from '../../src/apps/leave/leave-request/routing.js';
 import {
   type ApprovalOutcome,
   blocksTheCalendar,
@@ -30,8 +33,8 @@ import {
   TRANSITIONS,
   transitionFor,
   transitionsFrom,
-} from '../../src/features/leave-request/leave-request.js';
-import { isAboutAWithdrawal } from '../../src/features/leave-request/withdrawal.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
+import { isAboutAWithdrawal } from '../../src/apps/leave/leave-request/withdrawal.js';
 
 /**
  * A request moves through defined states and no others. §6.
@@ -58,7 +61,7 @@ import { isAboutAWithdrawal } from '../../src/features/leave-request/withdrawal.
  *
  * ## What is asserted here, and what is deliberately asserted elsewhere
  *
- * Now that ../../src/features/leave-request/policy.ts reads `TRANSITIONS`, **a test checking
+ * Now that ../../src/apps/leave/leave-request/policy.ts reads `TRANSITIONS`, **a test checking
  * the policy against the table is a test checking a function against itself** — widen a
  * row and both move together. That is the trap the seven-leave-types suite names as
  * "checking the migration against a copy of itself", and it is easy to walk into here
@@ -1228,7 +1231,7 @@ describe('one writer of the status column', () => {
     const updates = /updateTable\(\s*['"]leave_request['"]\s*\)/;
 
     const repository = sources.find(
-      ({ file }) => file === 'features/leave-request/leave-request.db.ts',
+      ({ file }) => file === 'apps/leave/leave-request/leave-request.db.ts',
     );
 
     expect(repository?.code).toMatch(updates);
@@ -1237,7 +1240,7 @@ describe('one writer of the status column', () => {
       sources
         .filter(
           ({ file, code }) =>
-            file !== 'features/leave-request/leave-request.db.ts' && updates.test(code),
+            file !== 'apps/leave/leave-request/leave-request.db.ts' && updates.test(code),
         )
         .map(({ file }) => file),
     ).toEqual([]);
@@ -1260,7 +1263,7 @@ describe('one writer of the status column', () => {
    */
   it('and exactly one statement in it sets a status', () => {
     const repository = sources.find(
-      ({ file }) => file === 'features/leave-request/leave-request.db.ts',
+      ({ file }) => file === 'apps/leave/leave-request/leave-request.db.ts',
     );
 
     expect(repository).toBeDefined();
@@ -1279,7 +1282,7 @@ describe('one writer of the status column', () => {
   it('and one file calls the repository method that does it', () => {
     const calling = sources.filter(({ code }) => /requests\.moveTo\s*\(/.test(code));
 
-    expect(calling.map(({ file }) => file)).toEqual(['features/balance/balance.service.ts']);
+    expect(calling.map(({ file }) => file)).toEqual(['apps/leave/balance/balance.service.ts']);
   });
 
   /**
@@ -1295,7 +1298,7 @@ describe('one writer of the status column', () => {
    * request one desk early.
    */
   it('and the door asks the table where the request lands', () => {
-    const door = sources.find(({ file }) => file === 'features/balance/balance.service.ts');
+    const door = sources.find(({ file }) => file === 'apps/leave/balance/balance.service.ts');
 
     expect(door?.code).toMatch(/settlementTo\(/);
     expect(door?.code).toMatch(/decisionTo\(/);
@@ -1306,7 +1309,7 @@ describe('one writer of the status column', () => {
      {@link DecidingAction} and asks the table what it means; a door that took a destination
      could turn leave down at a desk that had approved it. */
   it('and the door is handed a verb rather than a destination', () => {
-    const door = sources.find(({ file }) => file === 'features/balance/balance.service.ts');
+    const door = sources.find(({ file }) => file === 'apps/leave/balance/balance.service.ts');
 
     expect(door?.code).toMatch(/action: DecidingAction/);
     expect(door?.code).not.toMatch(/to: RequestStatus/);
@@ -1321,9 +1324,9 @@ describe('one writer of the status column', () => {
     const consulting = sources.filter(({ code }) => pattern.test(code));
 
     expect(consulting.map(({ file }) => file).sort()).toEqual([
-      'features/balance/balance.service.ts',
-      'features/leave-request/leave-request.service.ts',
-      'features/leave-request/leave-request.ts',
+      'apps/leave/balance/balance.service.ts',
+      'apps/leave/leave-request/leave-request.service.ts',
+      'apps/leave/leave-request/leave-request.ts',
     ]);
   });
 });

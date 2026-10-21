@@ -7,7 +7,7 @@ import {
   type RequestStatus,
   whatIsLeftOf,
   withdrawalTo,
-} from '../../src/features/leave-request/leave-request.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   ANSWERING_ACTIONS,
   AlreadyAskedToWithdraw,
@@ -26,7 +26,7 @@ import {
   type WithdrawalAction,
   WithdrawalNeedsAReason,
   withdrawalInWords,
-} from '../../src/features/leave-request/withdrawal.js';
+} from '../../src/apps/leave/leave-request/withdrawal.js';
 
 /**
  * Taking agreed leave off the books. FR 47.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { AnnualGrantRun } from '../../src/features/entitlement/annual-grant.js';
-import { AlreadyCarried, daysToCarry } from '../../src/features/balance/balance.js';
+import type { AnnualGrantRun } from '../../src/apps/leave/entitlement/annual-grant.js';
+import { AlreadyCarried, daysToCarry } from '../../src/apps/leave/balance/balance.js';
 import {
   type Carried,
   type CarryCandidate,
@@ -16,7 +16,7 @@ import {
   summaryOf,
   wasCarried,
   type YearRolloverRun,
-} from '../../src/features/leave-year/year-rollover.js';
+} from '../../src/apps/leave/leave-year/year-rollover.js';
 
 /**
  * The year rollover. FR 36, FR 36a, §11.

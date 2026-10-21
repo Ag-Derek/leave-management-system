@@ -13,7 +13,7 @@
  * development wants.
  */
 
-import type { DeniedAttempt, DenialLog } from '../../src/auth/denials.js';
+import type { DeniedAttempt, DenialLog } from '../../src/core/auth/denials.js';
 
 export interface RecordingDenialLog extends DenialLog {
   /** Every refusal, in the order it happened. */

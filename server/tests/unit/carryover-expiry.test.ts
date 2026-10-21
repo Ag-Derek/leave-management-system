@@ -3,7 +3,7 @@ import {
   daysToExpire,
   type LeaveBalance,
   unusedCarriedOver,
-} from '../../src/features/balance/balance.js';
+} from '../../src/apps/leave/balance/balance.js';
 import {
   carryoverDeadline,
   type CarryoverExpiryRun,
@@ -12,7 +12,7 @@ import {
   type ExpiryCandidate,
   reasonForExpiry,
   summaryOf,
-} from '../../src/features/leave-year/carryover-expiry.js';
+} from '../../src/apps/leave/leave-year/carryover-expiry.js';
 
 /** Carried annual leave expiring at the end of June. FR 36a. */
 

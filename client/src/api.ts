@@ -194,7 +194,7 @@ export interface History {
  *
  * A token rather than a sentence, so the screen can group and order them without reading
  * the words. What each one *says* is composed on the server — see
- * `server/src/features/leave-request/request-form.ts`, which argues why the wording of a
+ * `server/src/apps/leave/leave-request/request-form.ts`, which argues why the wording of a
  * leave rule is not a browser's to invent.
  */
 export type FormRuleKind =

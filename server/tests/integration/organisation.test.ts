@@ -2,18 +2,18 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
 import {
   ChiefExecutiveHasLeft,
   ChiefExecutiveNotFound,
   NoChiefExecutiveNamed,
-} from '../../src/features/organisation/organisation.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { OrganisationRepository } from '../../src/features/organisation/organisation.db.js';
-import { OrganisationService } from '../../src/features/organisation/organisation.service.js';
+} from '../../src/core/organisation/settings/organisation.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { OrganisationRepository } from '../../src/core/organisation/settings/organisation.db.js';
+import { OrganisationService } from '../../src/core/organisation/settings/organisation.service.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /**

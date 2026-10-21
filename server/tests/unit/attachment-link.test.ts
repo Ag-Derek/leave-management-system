@@ -10,7 +10,7 @@ import {
   newDownloadToken,
   secondsLeft,
   whyNotUsable,
-} from '../../src/features/leave-request/attachment-link.js';
+} from '../../src/apps/leave/leave-request/attachment-link.js';
 
 /**
  * The short-lived link a certificate is fetched through. NFR SEC 04, NFR SEC 06.

@@ -2,8 +2,8 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
 import {
   InvalidLeaveYear,
   type LeaveYear,
@@ -12,15 +12,15 @@ import {
   LeaveYearNotFinished,
   LeaveYearNotFound,
   OverlappingLeaveYears,
-} from '../../src/features/leave-year/leave-year.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
+} from '../../src/apps/leave/leave-year/leave-year.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
 import {
   earliestOpenDayFrom,
   LeaveYearService,
-} from '../../src/features/leave-year/leave-year.service.js';
+} from '../../src/apps/leave/leave-year/leave-year.service.js';
 import { seed } from '../../seeds/seed.mjs';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
 
 /**
  * Leave years against a real database. §5.4.

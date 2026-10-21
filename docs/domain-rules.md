@@ -17,7 +17,7 @@ These are the load bearing decisions. The reasoning is in the Technical Design D
 
 That last sentence is not advice. `lms_app` holds SELECT on
 `leave_balance` and no INSERT, every column is `never` for insert and update in
-`db/schema.ts` so a write does not compile, and a trigger refuses one from the owner
+`core/db/schema.ts` so a write does not compile, and a trigger refuses one from the owner
 connection as well. The figures are recomputed from the ledger, in the transaction
 of the entry that moved them, by the one function that knows the projection. See
 [The cached balance](#the-cached-balance).
@@ -87,7 +87,7 @@ because it can be broken in three ways.
 
 | | Holds | Checked by |
 |---|---|---|
-| `shared/whole-days.ts` | `isWholeDays()`, the one predicate every figure in days is asked | `unit/whole-days.test.ts`, over every entry point that takes one |
+| `apps/leave/whole-days.ts` | `isWholeDays()`, the one predicate every figure in days is asked | `unit/whole-days.test.ts`, over every entry point that takes one |
 | the migrations | no column of any table can hold a fraction, and none is a half day flag | `unit/migrations.test.ts`, read out of the SQL |
 | `server/src` | nothing in the API is named for a half day | `unit/whole-days.test.ts`, read out of the source |
 
@@ -115,7 +115,7 @@ that FR 24 "governs how leave is requested, not how entitlement is held".
 3 or 120 — but `leave_ledger_entry.days` does, because the fraction appears when the
 grant is calculated and the ledger is where a grant is recorded.
 
-That calculation exists: `features/entitlement/pro-rata.ts`, and it is the one place in
+That calculation exists: `apps/leave/entitlement/pro-rata.ts`, and it is the one place in
 this system where rounding a number of days is right rather than refused. It rounds to
 the hundredth, which is the ledger column's own precision and the precision §8.6d quotes
 its example to. See [Pro rating a part year](#pro-rating-a-part-year).
@@ -151,7 +151,7 @@ confused:
 calendar date without saying where.** `new Date('2026-07-31')` is midnight UTC,
 which is the thirtieth of July in Accra by an hour and in New York by five, and
 it is how a leaver acquires an exit date one day either side of the one on their
-letter. `server/src/shared/time.ts` holds both rules, and there is exactly one
+letter. `server/src/core/calendar/time.ts` holds both rules, and there is exactly one
 function in it that crosses between the two — `calendarDateIn()`, which will not
 do it without a zone.
 
@@ -159,8 +159,8 @@ Four things hold that up, and it is worth knowing which covers what:
 
 | | Covers | Does not cover |
 |---|---|---|
-| the `date` type parser in `server/src/db` | a `date` arriving as `'2026-07-31'` instead of a `Date` at midnight UTC, on every read | what the *server* renders it as, which is `DateStyle` |
-| `server/src/db` setting `TimeZone` and `DateStyle` on every pooled connection | the running application, whatever the host is set to and whether or not the migration has run | psql, the seed, a migration correcting data |
+| the `date` type parser in `server/src/core/db` | a `date` arriving as `'2026-07-31'` instead of a `Date` at midnight UTC, on every read | what the *server* renders it as, which is `DateStyle` |
+| `server/src/core/db` setting `TimeZone` and `DateStyle` on every pooled connection | the running application, whatever the host is set to and whether or not the migration has run | psql, the seed, a migration correcting data |
 | the timestamps-in-utc migration, on the role and on the database | every connection to this database, owner included — which is what keeps an audit snapshot's timestamps comparable between two writers | a host that will not permit the `ALTER DATABASE`, where it warns and the first two still hold |
 | `unit/migrations.test.ts` and `integration/time.test.ts` | a *future* table declaring a moment without a zone, or a leave date with a time on it — the ledger, the request, the balance | nothing; it is the backstop, and it is a test because the only thing in Postgres that sees DDL is an event trigger and those need a superuser |
 
@@ -312,7 +312,7 @@ that record, it is simply in the wrong place, and being in the wrong place is a
 thing you see rather than a thing you check. FR 09.
 
 **Everybody appears exactly once**, which is the property the whole of
-`server/src/features/employee/org-chart.ts` is built around. A chart that quietly drops the
+`server/src/core/organisation/employee/org-chart.ts` is built around. A chart that quietly drops the
 people it could not place looks correct precisely when the organisation is not,
 and the person it drops is the one whose manager is missing. So there is one list
 of roots, everybody hangs off one of them, and a root that should not be a root
@@ -616,7 +616,7 @@ and under the default rule two nulls are not equal, so the scope that matters mo
 would have been the one scope with no uniqueness at all.
 
 **It is implemented once, and the once is a pure function.**
-`resolve()` in `/features/entitlement/entitlement-rule.ts`. The repository fetches the
+`resolve()` in `/apps/leave/entitlement/entitlement-rule.ts`. The repository fetches the
 candidates for a person and a type and orders nothing; there is no view, and
 `integration/entitlement-rule.test.ts` asserts there is none. The obvious query —
 narrow by day, order by specificity and date, take the first — is an `ORDER BY
@@ -733,7 +733,7 @@ does not say otherwise. Reading an empty chain as "the default" at query time
 would have been the version of default HR cannot see — the configuration screen
 showing nothing for annual leave while the system routed it somewhere — so every
 type carries its chain explicitly. It is therefore stated twice, in
-`/features/leave-type/approval-chain.ts` for a type nobody configured and in the migration for
+`/apps/leave/leave-type/approval-chain.ts` for a type nobody configured and in the migration for
 a type an operator restores, and `integration/approval-chain.test.ts` asserts the
 two are the same two desks. Same arrangement as `READS_EVERY_RECORD` and
 `MANDATORY_ROLES`.
@@ -854,7 +854,7 @@ carries it too. Who closed it is the audit log, by the same argument that left
 that is the seam the entitlement rules left.** `EarliestOpenDay` was written as a
 function and passed `NOTHING_IS_CLOSED_YET`, saying the real implementation would be "the
 day after the last closed year ends". It now is: `earliestOpenDayFrom()` in
-`/features/leave-year/leave-year.service.ts`, one line over `earliestOpenDayOf()` in the
+`/apps/leave/leave-year/leave-year.service.ts`, one line over `earliestOpenDayOf()` in the
 domain. `NOTHING_IS_CLOSED_YET` survives rather than being deleted — it is still
 what a fresh database answers, and still what a caller with no leave years to read
 passes.
@@ -1008,7 +1008,7 @@ work gives back nothing.
 **Nothing at all is counted, and nought is returned.** A Saturday to Sunday request
 against a Monday to Friday pattern costs zero days of annual leave, and zero is what
 comes back. That used to be a refusal thrown from here; it moved to
-`assertItCostsSomething()` in `/features/leave-request/leave-request.ts`, raised by the submission
+`assertItCostsSomething()` in `/apps/leave/leave-request/leave-request.ts`, raised by the submission
 validator on the answer this function gave. **The difference is between a fact and a
 judgement.** That a period costs nothing is arithmetic, and it is arithmetic FR 25 has
 a use for — a recalculation asks what a period costs *now* and compares, and a function
@@ -1066,7 +1066,7 @@ exactly it. FR 08.
 The whole thing runs through `EmployeeService`, one row at a time, inside one
 transaction — that is what `Transactions.allOrNothing()` in `/repositories` is
 for, and it is the only transaction any service has needed so far. **The import
-therefore cannot drift away from the form.** A rule added to `/features/employee/employee.ts`
+therefore cannot drift away from the form.** A rule added to `/core/organisation/employee/employee.ts`
 is a rule the import gained the same afternoon, and there is no second opinion
 about whether a personal address is acceptable in bulk. The cost is a round trip
 per row, which for a few hundred rows once at go live is the right side of that
@@ -1166,7 +1166,7 @@ entry per side of days moving between two leave types, under one reason and one
 
 **`EXPIRY` and `LAPSE` are two clocks with similar names, and they are two entry
 types because they put their days back in different places.**
-`features/leave-type/leave-type.ts` named the collision before either clock existed. `EXPIRY` is
+`apps/leave/leave-type/leave-type.ts` named the collision before either clock existed. `EXPIRY` is
 FR 36a: carried days running out in the month HR named, so it takes days back out of
 `carried_over` where the carry put them. `LAPSE` is FR 32e: paternity's fourteen days
 unused six months after the birth, so it takes days out of `entitled` where the
@@ -1180,7 +1180,7 @@ migration, because the database holds the same list."
 one.** `RESERVATION -5` followed on approval by `DEDUCTION -5` is five days gone
 once, not ten: the second moves them from held to taken. Available is five figures
 — `entitled + carriedOver + adjustment − taken − pending` — and which of them each
-kind moves is `BUCKETS` in `features/balance/ledger.ts`. `runningTotal()` exists and is named
+kind moves is `BUCKETS` in `apps/leave/balance/ledger.ts`. `runningTotal()` exists and is named
 `after` rather than `balance` for exactly this reason: it answers "what did these
 rows do", which is what a history screen shows, and not "what may this person
 book", which is `leave_balance` — see [The cached
@@ -1206,7 +1206,7 @@ leave a psql prompt as the only way to fix a settled figure.
 
 **Who wrote it and when are not the writer's to say.** `created_by`,
 `created_by_employee_id` and `created_at` are overwritten by a trigger from the
-settings `db/recording.ts` puts on the transaction — the same seam the
+settings `core/db/recording.ts` puts on the transaction — the same seam the
 audit log reads. A `DEFAULT` would only apply to a writer that said nothing, which
 is the honest writer; the value of "who posted this" is that nobody could have
 chosen it. Dating is the sharper half: a balance is rebuilt in the order the rows
@@ -1260,7 +1260,7 @@ somebody's whole history every time a screen shows a figure.
 
 **Available is `entitled + carried_over + adjustment − taken − pending`, and is not
 a column.** It is a subtraction of the five rather than a sixth fact, it lives in
-`features/balance/balance.ts`, and a stored copy would put the formula in two languages.
+`apps/leave/balance/balance.ts`, and a stored copy would put the formula in two languages.
 `taken` and `pending` are positive counts of movements the ledger records as
 negative — a `RESERVATION` is −5 days in the ledger and five days pending here —
 which is why this subtracts where a naive sum of signed movements would add. It may
@@ -1271,7 +1271,7 @@ kinds of movement moves is `rebuild_one_balance_from_the_ledger()`, and nothing 
 anywhere computes a balance — not the service, not the domain, not a report. That is
 the rule the ledger migration set when it declined to write the first copy: "a total
 computed in two places is the drift the cached balance exists to be checked
-against". `BUCKETS` in `features/balance/ledger.ts` is the *statement* of the same projection
+against". `BUCKETS` in `apps/leave/balance/ledger.ts` is the *statement* of the same projection
 in the language the screens are written in, and `integration/balance.test.ts` posts
 one entry of each kind and asserts that exactly the named columns moved, which is
 what keeps the two in step rather than merely both present.
@@ -1292,7 +1292,7 @@ overwrite the first's total with a sum that was missing a row.
 **Nothing above the database writes it, and the type system says so.** `lms_app`
 holds SELECT and had its INSERT revoked — the one table in this schema to give the
 default privileges back — every column is `never` for insert and update in
-`db/schema.ts`, and `refuse_a_balance_written_by_hand()` refuses the owner
+`core/db/schema.ts`, and `refuse_a_balance_written_by_hand()` refuses the owner
 connection too, naming the way through rather than only locking the door. A balance
 changes because a ledger entry was posted, in that entry's transaction, or it does
 not change: there is no service to forget and no psql prompt that can move somebody's
@@ -1655,7 +1655,7 @@ to know where to take it rather than only that they may not.
 ### Rolling a year over
 
 **Leave somebody did not get round to taking is not lost on the first of January.**
-FR 36, FR 36a, §11. `features/leave-year/year-rollover.job.ts` closes the year that ended, carries
+FR 36, FR 36a, §11. `apps/leave/leave-year/year-rollover.job.ts` closes the year that ended, carries
 what is left of it into the next one as a `CARRY_FORWARD`, and grants the new year.
 It is the last piece of Phase 2 and the point at which a balance stops being a thing that
 happens once and starts being a thing that continues.
@@ -1697,7 +1697,7 @@ honours a cap where HR sets one, and the entry says so (`capped at 5 of 20 days`
 rule has applied and cannot be changed), so days carried out of 2026 expire after
 2027-06-30.
 
-`features/leave-year/carryover-expiry.job.ts` does the expiring, and is a separate job from
+`apps/leave/leave-year/carryover-expiry.job.ts` does the expiring, and is a separate job from
 the rollover:
 
 - The month comes from the rule in force on the **first day of the year the days were
@@ -2008,7 +2008,7 @@ precisely the surprise this part of the system exists to prevent, arriving late.
 
 **The refusals are the request's, and the day calculator stays out of it.**
 `countLeaveDays()` used to throw for a period that cost nothing; that
-judgement moved into `/features/leave-request/leave-request.ts`, leaving the calculator
+judgement moved into `/apps/leave/leave-request/leave-request.ts`, leaving the calculator
 [pure and total](#the-day-calculator). A Saturday of annual leave costing nought is
 arithmetic about a calendar, and FR 25's recalculation has to be able to ask for it and
 get a number. Whether a person may submit a request for it is a rule about requests, and
@@ -2161,7 +2161,7 @@ unrelated problems. Both messages open with the same clause, from
 **Sick leave is not refused for want of days.** FR 32a and §8.6b: `exceedable_with_document`
 makes the allowance the point at which a medical certificate is asked for rather than a cap,
 so the balance goes below nought and the leave is granted. Read off the column by
-`balanceMayBeExceededWithDocument()` — which has long sat in `/features/leave-type/leave-type.ts`
+`balanceMayBeExceededWithDocument()` — which has long sat in `/apps/leave/leave-type/leave-type.ts`
 saying the check "belongs to the submission path, which is the only thing that knows
 what the balance is", and this is that path. No leave type code is compared to anything;
 design principle 5.
@@ -2462,7 +2462,7 @@ mechanism but three: the moves are a table, one place writes the column, and eve
 is on the record.
 
 **The table is the rule, not documentation of it.** `TRANSITIONS` in
-`/features/leave-request/leave-request.ts`, keyed by from-status and action, carrying the destination and
+`/apps/leave/leave-request/leave-request.ts`, keyed by from-status and action, carrying the destination and
 the standings that may make it:
 
 | From | Action | To | By |
@@ -2499,7 +2499,7 @@ keyed by role codes could not express either without widening them into "anybody
 every record", which is how a manager comes to withdraw a stranger's leave. It is also
 what lets the table live in `/domain` at all, which [imports
 nothing](#layering-rule): the table says `THEIR_LINE_MANAGER`, and
-`/features/leave-request/policy.ts` is the only file that knows which roles satisfy
+`/apps/leave/leave-request/policy.ts` is the only file that knows which roles satisfy
 `LEAVE_ADMINISTRATION`.
 
 **Two questions, and the order they are asked in is a disclosure rule.** The policy
@@ -2563,7 +2563,7 @@ one — the same discipline `settlementTo()` keeps, and it matters for the same 
 function that could name `APPROVED` could name it one desk early.
 
 **The three desks are three different kinds of fact**, which is why the domain names
-standings and `/features/leave-request/policy.ts` resolves them:
+standings and `/apps/leave/leave-request/policy.ts` resolves them:
 
 | Desk | Is | Resolved by |
 |---|---|---|
@@ -2923,7 +2923,7 @@ judgement nobody else made.
 
 **So the check moved from the standing to the verb.** `leaveRequestPolicy.notTheirOwn()` is
 the first question `mayMove()` asks of `APPROVE` and `REFUSE` — `isADecision()` is the line,
-and it is the same one `/features/leave-request/leave-decision.ts` draws for what gets recorded. Written
+and it is the same one `/apps/leave/leave-request/leave-decision.ts` draws for what gets recorded. Written
 against the verb it answers both, and answers whatever deciding verb arrives next by default
 rather than by somebody remembering. Left on the standing it answered one row of the table.
 
@@ -2962,14 +2962,14 @@ in **name order** — so a `BEFORE` trigger named for this rule would run first,
 decider every time, and pass everything silently.
 
 **A null decider passes, and that is the system.** `theSystem` is nobody by construction —
-`/auth/actor.ts` gives it a null `employeeId` so it matches no record's owner — and it reaches
+`/core/auth/actor.ts` gives it a null `employeeId` so it matches no record's owner — and it reaches
 every table in this schema that way. A rule refusing a null would refuse the annual run with a
 sentence about self-approval.
 
 **403 and the log are `Guard.enforce`'s**, as every refusal in this system is: a
 `NotAuthorised` carrying the vague message or the open one, with the attempt written to the
 denial log first — who, what they held, which verb, whose leave. Turning that into a status
-code arrived with [My balances](#my-balances) and is `http/problems.ts`: an open refusal is
+code arrived with [My balances](#my-balances) and is `core/http/problems.ts`: an open refusal is
 403 with its own sentence, a silent one is **404 with the words a missing record produces**,
 because a 403 would state the very fact the message declines to. What this story settles is
 the half that has to be right on the server whatever the interface does.
@@ -2987,7 +2987,7 @@ running out of people to ask.** FR 48, FR 48b, §8.6a. The reciprocal of the rul
 the requester is refused at four altitudes and the request stopped where it stood.
 
 **A desk is empty in three different ways, because the three resolve to a person by three
-different mechanisms.** `features/leave-request/routing.ts` holds the whole of it, and it is
+different mechanisms.** `apps/leave/leave-request/routing.ts` holds the whole of it, and it is
 pure — the chain, what each desk amounts to, and nothing else.
 
 | Desk | Cannot answer when | Who that is |
@@ -3471,7 +3471,7 @@ of correct numbers could still mislead**.
 
 **A leave type with no row is not a leave type with no allowance.** `BalanceRepository.forEmployee`
 returns only balances something has moved, says so, and hands the rest of the question over by
-name. `linesFor` in `features/balance/balance-statement.ts` is the answer: a type is on the statement
+name. `linesFor` in `apps/leave/balance/balance-statement.ts` is the answer: a type is on the statement
 where **anything has moved it**, or where it is **still offered and open to this person**. The
 moved limb is asked first, so no rule about retirement or eligibility can hide a figure that
 exists — a type HR retired in March stays on the statement of everybody with days in it,
@@ -3505,7 +3505,7 @@ is neither is a 404 that names the years that are, rather than seven rows of nou
 this one closes.
 
 **And the counting basis is on every row, in words.** FR 22, the story's third criterion.
-`countingBasisInWords` moved from the request quote to `features/leave-type/leave-type.ts` when this became
+`countingBasisInWords` moved from the request quote to `apps/leave/leave-type/leave-type.ts` when this became
 its second caller — it is a fact about a type and nothing about a request. It matters more here
 than on a quote, because a statement puts annual leave and maternity leave in adjacent rows
 where the same "14 days" means a fortnight of work in one and a fortnight of the calendar in the
@@ -3528,17 +3528,17 @@ the subject may be.
 
 **The session cookie carries an employee id and no roles.** `SignedIn.actor` is explicit that an
 actor is the answer to "who is this" and never the evidence for it, so the cookie is an id, an
-issued-at and an HMAC over both — and `http/identify.ts` re-reads the employee record, the
+issued-at and an HMAC over both — and `core/http/identify.ts` re-reads the employee record, the
 login and the roles on **every request**. That is stricter than the snapshot this README used to
 describe: an `HR_ADMIN` revoked while somebody is working is gone on their next request, and
 somebody terminated at nine o'clock is refused at one minute past.
 
-**The mounting order in `http/app.ts` is the authorisation model.** Two sign in routes in
+**The mounting order in `app.ts` is the authorisation model.** Two sign in routes in
 front of `identify`, everything else behind it. A route added behind it cannot be reached
 without a session whatever its handler forgets; making one public is an edit to that file, which
 somebody reviews.
 
-**A silent refusal is 404, not 403.** `http/problems.ts`, and it is the one translation that
+**A silent refusal is 404, not 403.** `core/http/problems.ts`, and it is the one translation that
 had to be got right: `NOT_AUTHORISED_MESSAGE` is written to be word for word identical to what a
 missing record produces, because "two messages that differ are a way of asking the server
 whether a record exists" — and 403 means "it is there and you may not", which states the very
@@ -3586,9 +3586,9 @@ pairing that actually misleads people is the one [every stage must
 approve](#every-stage-must-approve) was written about: **the newest approval, shown on its
 own, reads as agreement.**
 
-`progressOf` in `features/leave-request/leave-request.ts` already put those four together for FR 41 and this
+`progressOf` in `apps/leave/leave-request/leave-request.ts` already put those four together for FR 41 and this
 story restates none of it — every entry carries that function's answer whole. What
-`features/leave-request/request-history.ts` adds is the *order*: a progress is a verdict about now, and a
+`apps/leave/leave-request/request-history.ts` adds is the *order*: a progress is a verdict about now, and a
 history is the sequence that produced it.
 
 **So the trail contains what has not happened yet**, which is the decision in the story most
@@ -3599,7 +3599,7 @@ be. Those steps carry a null `at`, which is what tells a screen they have not ha
 it having to know what the four kinds mean.
 
 **Two endings carry no name and no time, and that is reported rather than guessed.** A
-withdrawal and a cancellation are not decisions — `features/leave-request/leave-decision.ts` is emphatic that
+withdrawal and a cancellation are not decisions — `apps/leave/leave-request/leave-decision.ts` is emphatic that
 "a decision recorded for either would put a judgement in front of the requester that nobody
 made" — so no row names who did it or when. The tempting substitute is `leave_request.updated_at`,
 and it is wrong in a way that would be hard to see: a reworded reason moves that column, so a
@@ -3683,7 +3683,7 @@ shape of the story and it is why there are two calls rather than one:
 | The screen opens | What each kind of leave asks of you | `GET /api/me/request-form` |
 | Two dates exist | What this period costs | `GET /api/me/requests/quote` |
 
-`quoteFor` in `features/leave-request/leave-request.ts` already answers the second, and long
+`quoteFor` in `apps/leave/leave-request/leave-request.ts` already answers the second, and long
 has — the day count, the days inside the period that were free and why, what the balance
 holds and would hold, and the warnings. **It cannot answer the other two, because a quote needs
 a period.** A form built on the quote alone would tell somebody maternity leave needs
@@ -3692,7 +3692,7 @@ choosing compassionate leave nothing at all until they had committed to a week. 
 than the story asks and later than the facts are available: the rules are properties of the
 type, and they were true before anybody opened the page.
 
-So `features/leave-request/request-form.ts` is a second read model beside the history's, and
+So `apps/leave/leave-request/request-form.ts` is a second read model beside the history's, and
 **one fact is deliberately said twice in two voices**. The standing rule is *this kind of leave
 needs documentation*; the quote's `DOCUMENTATION_REQUIRED` warning is *these nine days need it*.
 Neither is a duplicate and the second cannot replace the first, because the first is the one
@@ -3756,7 +3756,7 @@ cost of the date somebody has already changed.
 The refusals a form provokes are the ones carrying the instruction: `LeaveCrossesAYearEnd` names
 the two dates to submit instead, `NotEnoughDays` names how many days could be asked for,
 `TooLateToRecord` names who can still enter it. Every one of them reached a browser as
-"Something went wrong. It has been logged." — because `http/problems.ts` matched `Invalid*` and
+"Something went wrong. It has been logged." — because `core/http/problems.ts` matched `Invalid*` and
 `*NotFound` and nothing else. That sends a developer to the logs instead of the person who can
 fix it, and it is the exact failure this story is about.
 
@@ -3777,7 +3777,7 @@ is that, in a dozen lines, and the tabs became anchors so that middle click, cop
 history are the browser's behaviour rather than something `App.tsx` reimplements.
 
 **The hash rather than a path**, because a path needs the server to answer every URL with
-`index.html` and `http/app.ts` does not: a reload on `/requests` would hit the API's own 404.
+`index.html` and `app.ts` does not: a reload on `/requests` would hit the API's own 404.
 The hash never reaches the server. When the deployment grows a static file server with a
 fallback, this becomes the History API and nothing else changes.
 
@@ -3804,7 +3804,7 @@ FR 40, §8.6a. The failure it is written against is a manager going through emai
 find out what they owe an answer on, and a request nobody happens to look at.
 
 **The desks are the query, and the query is the disclosure gate.** `desksStaffedBy` in
-`features/leave-request/policy.ts` answers which desks somebody staffs, and it is `isAt` — the
+`apps/leave/leave-request/policy.ts` answers which desks somebody staffs, and it is `isAt` — the
 question `approve` asks — turned the other way round: that one takes a request and asks *are
 you the desk it is sitting on*, and a queue has no request in hand. `MANAGER` is
 `actor.isManager` narrowed to that person's own reports; `HR` and `CEO` are staffed for the
@@ -4755,7 +4755,7 @@ people is a screen somebody learns not to trust.
 **Direct reports only, and that is a query rather than a filter.**
 `EmployeeRepository.findReportsOf` is asked for one level, so a report who manages people of
 their own brings none of them here. Akosua manages Kofi, who manages three people: her team is
-Kofi. Nothing in `features/team/team.ts` removes the rest, because the rest is never read — which
+Kofi. Nothing in `apps/leave/team/team.ts` removes the rest, because the rest is never read — which
 is the difference between a rule and a redaction.
 
 **Two gates, and each answers a different question.** `teamPolicy.read` says whether there is a
@@ -4834,7 +4834,7 @@ FR 55 and FR 56 put on the old screen — out of `/api/me/team`, which is still 
 that may name a leave type.
 
 **The privacy rule is what is not wired up, rather than a filter somebody could forget.**
-`TeamCalendarService` is constructed in `http/app.ts` with the employee, leave request and
+`TeamCalendarService` is constructed in `app.ts` with the employee, leave request and
 leave year repositories, and no `LeaveTypeRepository` at all. `TeamCalendarFacts` carries no
 `LeaveType`, so `teamCalendarFor` cannot assemble a type name — it is not something the
 projection declines to send, it is something it has no way to know. The reason is a column on

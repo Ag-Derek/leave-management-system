@@ -372,7 +372,7 @@ function initialsOf(me: Me): string {
  * conventions to buy a `hashchange` listener with.
  *
  * **The hash rather than a path**, because a path needs the server to answer every URL with
- * `index.html` and nothing in `server/src/http/app.ts` does: a reload on `/requests` today
+ * `index.html` and nothing in `server/src/app.ts` does: a reload on `/requests` today
  * would hit the API's 404 rather than the application. The hash never reaches the server. When
  * the deployment grows a static file server that falls back to `index.html`, this becomes the
  * History API and the rest of the file does not change.

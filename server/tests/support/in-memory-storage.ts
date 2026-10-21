@@ -5,7 +5,7 @@ import {
   ObjectNotFound,
   type Storage,
   type StoredObject,
-} from '../../src/storage/storage.js';
+} from '../../src/core/storage/storage.js';
 
 /**
  * `Storage` in a Map. NFR SEC 04.

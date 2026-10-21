@@ -5,7 +5,7 @@
  */
 
 import { config } from 'dotenv';
-import { restore } from '../server/src/db/backup.js';
+import { restore } from '../server/src/core/db/backup.js';
 
 config();
 

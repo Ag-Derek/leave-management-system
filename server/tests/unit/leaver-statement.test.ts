@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type LeaveBalance, noMovementsYet } from '../../src/features/balance/balance.js';
+import { type LeaveBalance, noMovementsYet } from '../../src/apps/leave/balance/balance.js';
 import {
   accruesOverTheYear,
   linesFor,
@@ -10,12 +10,15 @@ import {
   type SettlementFacts,
   type SettlementStep,
   StillEmployed,
-} from '../../src/features/balance/leaver-statement.js';
-import { BY_COMPLETED_TWELFTHS } from '../../src/features/entitlement/pro-rata.js';
-import type { EntitlementRule } from '../../src/features/entitlement/entitlement-rule.js';
-import type { Employee } from '../../src/features/employee/employee.js';
-import { type LeaveType, validateNewLeaveType } from '../../src/features/leave-type/leave-type.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
+} from '../../src/apps/leave/balance/leaver-statement.js';
+import { BY_COMPLETED_TWELFTHS } from '../../src/apps/leave/entitlement/pro-rata.js';
+import type { EntitlementRule } from '../../src/apps/leave/entitlement/entitlement-rule.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
+import {
+  type LeaveType,
+  validateNewLeaveType,
+} from '../../src/apps/leave/leave-type/leave-type.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
 
 /**
  * The leaver figure. FR 37a, §8.6d, §8.7.

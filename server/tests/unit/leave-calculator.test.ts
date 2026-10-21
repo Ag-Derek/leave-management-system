@@ -1,19 +1,22 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { Holiday } from '../../src/features/holiday/holiday.js';
+import type { Holiday } from '../../src/apps/leave/holiday/holiday.js';
 import {
   costsADay,
   countLeaveDays,
   InvalidLeavePeriod,
   validateLeavePeriod,
-} from '../../src/features/leave-calculator/leave-calculator.js';
-import { type LeaveType, validateNewLeaveType } from '../../src/features/leave-type/leave-type.js';
+} from '../../src/apps/leave/leave-calculator/leave-calculator.js';
+import {
+  type LeaveType,
+  validateNewLeaveType,
+} from '../../src/apps/leave/leave-type/leave-type.js';
 import {
   MONDAY_TO_FRIDAY,
   type WorkPattern,
   type Weekday,
-} from '../../src/features/work-pattern/work-pattern.js';
+} from '../../src/core/calendar/work-pattern/work-pattern.js';
 
 /**
  * How many days a period of leave costs. FR 21, FR 22, §7.3.
@@ -41,7 +44,7 @@ import {
  *
  * **Nothing at all is counted, and nought is returned.** The refusal moved
  * out of this function and into the submission validator — see
- * ../../src/features/leave-request/leave-request.ts and ./leave-request.test.ts. A Saturday of annual
+ * ../../src/apps/leave/leave-request/leave-request.ts and ./leave-request.test.ts. A Saturday of annual
  * leave costs nothing, which is arithmetic; whether somebody may *ask* for it is a
  * rule about requests. What is proved here is the half the refusal is built on: the
  * count is nought and `free` names every day inside the period and why.
@@ -128,7 +131,7 @@ describe('a working day type, which skips weekends and holidays', () => {
   });
 
   /* A week off costs a part timer four days rather than five — the sentence
-     ../../src/features/work-pattern/work-pattern.ts opens with, finally counted. */
+     ../../src/core/calendar/work-pattern/work-pattern.ts opens with, finally counted. */
   it('costs a part timer only the days they work', () => {
     const week = { from: '2026-03-02', to: '2026-03-08' };
 
@@ -258,7 +261,15 @@ describe('the branch is on the counting basis, never on the type code', () => {
    */
   it('does not so much as mention the code field', () => {
     const source = readFileSync(
-      join(process.cwd(), 'server', 'src', 'features', 'leave-calculator', 'leave-calculator.ts'),
+      join(
+        process.cwd(),
+        'server',
+        'src',
+        'apps',
+        'leave',
+        'leave-calculator',
+        'leave-calculator.ts',
+      ),
       'utf8',
     )
       .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -351,7 +362,7 @@ describe('two dates that are not a period', () => {
 
   /**
    * A guard against a typed year rather than a policy about leave, and the same
-   * distinction `requireWindow` in ../../src/features/leave-type/leave-type.ts draws when it
+   * distinction `requireWindow` in ../../src/apps/leave/leave-type/leave-type.ts draws when it
    * refuses a notice window of 365 days with "check the unit".
    *
    * Deliberately generous: two years is far longer than any absence this system
@@ -451,7 +462,15 @@ describe('it reads nothing at all', () => {
        formatter rewraps, and a test that only sees the short ones would quietly
        stop noticing the long one somebody added. */
     const source = readFileSync(
-      join(process.cwd(), 'server', 'src', 'features', 'leave-calculator', 'leave-calculator.ts'),
+      join(
+        process.cwd(),
+        'server',
+        'src',
+        'apps',
+        'leave',
+        'leave-calculator',
+        'leave-calculator.ts',
+      ),
       'utf8',
     )
       .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -460,10 +479,10 @@ describe('it reads nothing at all', () => {
     const imports = [...source.matchAll(/from '([^']+)';/g)].map(([, from]) => from);
 
     expect(imports.sort()).toEqual([
-      '../../shared/time.js',
+      '../../../core/calendar/time.js',
+      '../../../core/calendar/work-pattern/work-pattern.js',
       '../holiday/holiday.js',
       '../leave-type/leave-type.js',
-      '../work-pattern/work-pattern.js',
     ]);
   });
 

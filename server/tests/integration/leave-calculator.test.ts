@@ -2,19 +2,19 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import type { Employee } from '../../src/features/employee/employee.js';
-import { InvalidLeavePeriod } from '../../src/features/leave-calculator/leave-calculator.js';
-import type { LeaveType } from '../../src/features/leave-type/leave-type.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { HolidayRepository } from '../../src/features/holiday/holiday.db.js';
-import { LeaveTypeRepository } from '../../src/features/leave-type/leave-type.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { LeaveCalculatorService } from '../../src/features/leave-calculator/leave-calculator.service.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
+import { InvalidLeavePeriod } from '../../src/apps/leave/leave-calculator/leave-calculator.js';
+import type { LeaveType } from '../../src/apps/leave/leave-type/leave-type.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { HolidayRepository } from '../../src/apps/leave/holiday/holiday.db.js';
+import { LeaveTypeRepository } from '../../src/apps/leave/leave-type/leave-type.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { LeaveCalculatorService } from '../../src/apps/leave/leave-calculator/leave-calculator.service.js';
 import { seed } from '../../seeds/seed.mjs';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard } from '../../src/auth/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard } from '../../src/core/auth/policy.js';
 
 /**
  * The day calculator against a real database. FR 21, FR 22, §7.3.
@@ -34,7 +34,7 @@ import { Guard } from '../../src/auth/policy.js';
  *   FR 32.
  *
  *   **The first of January 2027 costs a day, and it should.** Only 2026's gazette
- *   is seeded — see ../../src/features/holiday/holiday.ts for why a plausible 2027 would be
+ *   is seeded — see ../../src/apps/leave/holiday/holiday.ts for why a plausible 2027 would be
  *   worse than an empty one — so until HR transcribes it, New Year's Day is an
  *   ordinary Friday. That is the hazard the calendar leaves visible on purpose, and this
  *   is what it looks like from the other end. Entering the day fixes it, with no

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import type { Actor } from '../../src/auth/actor.js';
-import type { Employee } from '../../src/features/employee/employee.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import type { Actor } from '../../src/core/auth/actor.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import {
   ChiefExecutiveCannotBeCleared,
   ChiefExecutiveHasLeft,
@@ -14,9 +14,9 @@ import {
   UNCONFIGURED,
   validatePolicyChanges,
   whyTheyCannotBeNamed,
-} from '../../src/features/organisation/organisation.js';
-import { organisationPolicy } from '../../src/features/organisation/policy.js';
-import { ROLE_CODES, type RoleCode } from '../../src/features/role/roles.js';
+} from '../../src/core/organisation/settings/organisation.js';
+import { organisationPolicy } from '../../src/core/organisation/settings/policy.js';
+import { ROLE_CODES, type RoleCode } from '../../src/core/identity/role/roles.js';
 
 /** Who the Chief Executive is, as rules. FR 48c, FR 04, §4.3.1. */
 

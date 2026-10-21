@@ -4,7 +4,7 @@ import {
   type LeaveRequest,
   type RequestStatus,
   reclassificationTo,
-} from '../../src/features/leave-request/leave-request.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   assertItCanBeMovedInto,
   assertTheCertificateStands,
@@ -18,9 +18,12 @@ import {
   type Reclassification,
   reasonForReclassification,
   reclassificationInWords,
-} from '../../src/features/leave-request/reclassification.js';
-import type { LeaveRequestAttachment } from '../../src/features/leave-request/attachment.js';
-import { type LeaveType, validateNewLeaveType } from '../../src/features/leave-type/leave-type.js';
+} from '../../src/apps/leave/leave-request/reclassification.js';
+import type { LeaveRequestAttachment } from '../../src/apps/leave/leave-request/attachment.js';
+import {
+  type LeaveType,
+  validateNewLeaveType,
+} from '../../src/apps/leave/leave-type/leave-type.js';
 
 /**
  * Sickness during annual leave, moved to sick leave. FR 32c, §8.6c.

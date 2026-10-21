@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { problemFor } from '../../src/http/problems.js';
-import { NotEnoughDays } from '../../src/features/leave-request/leave-request.js';
-import type { LeaveType } from '../../src/features/leave-type/leave-type.js';
+import { problemFor } from '../../src/core/http/problems.js';
+import { NotEnoughDays } from '../../src/apps/leave/leave-request/leave-request.js';
+import type { LeaveType } from '../../src/apps/leave/leave-type/leave-type.js';
 
 /**
  * What a refusal says to the person who met it. NFR USA 03.

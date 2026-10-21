@@ -1,6 +1,10 @@
 import { randomBytes, scryptSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { hashPassword, needsRehash, verifyPassword } from '../../src/features/sign-in/password.js';
+import {
+  hashPassword,
+  needsRehash,
+  verifyPassword,
+} from '../../src/core/identity/sign-in/password.js';
 
 /**
  * NFR SEC 01, the storage half.

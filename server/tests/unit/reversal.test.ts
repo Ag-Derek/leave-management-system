@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type Actor, signedInAs, theSystem } from '../../src/auth/actor.js';
+import { type Actor, signedInAs, theSystem } from '../../src/core/auth/actor.js';
 import type {
   LeaveRequest,
   RequestStatus,
-} from '../../src/features/leave-request/leave-request.js';
-import { leaveRequestPolicy } from '../../src/features/leave-request/policy.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
+import { leaveRequestPolicy } from '../../src/apps/leave/leave-request/policy.js';
 import {
   NothingToReverse,
   reasonForReversal,
@@ -12,7 +12,7 @@ import {
   reversalOf,
   TooLateToReverse,
   validateReversal,
-} from '../../src/features/leave-request/reversal.js';
+} from '../../src/apps/leave/leave-request/reversal.js';
 
 /** The Chief Executive reversing a request every desk has finished deciding. */
 

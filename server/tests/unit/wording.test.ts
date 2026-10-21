@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { LeaveRequest } from '../../src/features/leave-request/leave-request.js';
-import { NOTICE_EVENTS, noticeOf } from '../../src/features/notification/notification.js';
-import { reminderOf } from '../../src/features/notification/reminder.js';
+import type { LeaveRequest } from '../../src/apps/leave/leave-request/leave-request.js';
+import { NOTICE_EVENTS, noticeOf } from '../../src/apps/leave/notification/notification.js';
+import { reminderOf } from '../../src/apps/leave/notification/reminder.js';
 import {
   EMAILS,
   emailFor,
@@ -13,8 +13,8 @@ import {
   placeholdersOffered,
   readEmailName,
   validateWording,
-} from '../../src/features/notification/wording.js';
-import { previewOf } from '../../src/features/notification/wording-preview.js';
+} from '../../src/apps/leave/notification/wording.js';
+import { previewOf } from '../../src/apps/leave/notification/wording-preview.js';
 
 /** HR's wording of the emails. FR 61. The original wording is pinned by ./notification.test.ts. */
 

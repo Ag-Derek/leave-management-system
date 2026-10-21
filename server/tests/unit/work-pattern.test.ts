@@ -12,7 +12,7 @@ import {
   type WorkPattern,
   WorkPatternInUse,
   worksOn,
-} from '../../src/features/work-pattern/work-pattern.js';
+} from '../../src/core/calendar/work-pattern/work-pattern.js';
 
 /**
  * The rules for a working pattern, checked without a database. FR 23.

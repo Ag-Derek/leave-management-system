@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { signedInAs } from '../../src/auth/actor.js';
-import { Guard } from '../../src/auth/policy.js';
-import { HR_SECTIONS, sectionsFor } from '../../src/features/sign-in/sections.js';
-import type { DesksStaffed } from '../../src/features/leave-request/approver-queue.js';
-import type { RoleCode } from '../../src/features/role/roles.js';
+import { signedInAs } from '../../src/core/auth/actor.js';
+import { Guard } from '../../src/core/auth/policy.js';
+import { HR_SECTIONS, sectionsFor } from '../../src/apps/leave/session/sections.js';
+import type { DesksStaffed } from '../../src/apps/leave/leave-request/approver-queue.js';
+import type { RoleCode } from '../../src/core/identity/role/roles.js';
 
 /**
  * Which sections the rail is told to draw. The hub replaced ten tabs that refused most people.

@@ -4,7 +4,7 @@ import {
   normaliseHeading,
   readSheet,
   UnreadableSpreadsheet,
-} from '../../src/features/staff-import/spreadsheet.js';
+} from '../../src/core/organisation/staff-import/spreadsheet.js';
 
 /**
  * Turning a file into rows. FR 08.

@@ -17,22 +17,22 @@
 
 import { config } from 'dotenv';
 import { Client } from 'pg';
-import { theSystem } from '../server/src/auth/actor.js';
-import { Guard } from '../server/src/auth/policy.js';
-import { databaseFor } from '../server/src/db/index.js';
-import { Transactions } from '../server/src/db/transaction.js';
-import { AnnualGrant } from '../server/src/features/entitlement/annual-grant.job.js';
-import { BalanceRepository } from '../server/src/features/balance/balance.db.js';
-import { BalanceService } from '../server/src/features/balance/balance.service.js';
-import { EmployeeRepository } from '../server/src/features/employee/employee.db.js';
-import { EntitlementRuleRepository } from '../server/src/features/entitlement/entitlement-rule.db.js';
-import { EntitlementRuleService } from '../server/src/features/entitlement/entitlement-rule.service.js';
-import { LeaveTypeRepository } from '../server/src/features/leave-type/leave-type.db.js';
-import { LeaveYearRepository } from '../server/src/features/leave-year/leave-year.db.js';
+import { theSystem } from '../server/src/core/auth/actor.js';
+import { Guard } from '../server/src/core/auth/policy.js';
+import { databaseFor } from '../server/src/core/db/index.js';
+import { Transactions } from '../server/src/core/db/transaction.js';
+import { AnnualGrant } from '../server/src/apps/leave/entitlement/annual-grant.job.js';
+import { BalanceRepository } from '../server/src/apps/leave/balance/balance.db.js';
+import { BalanceService } from '../server/src/apps/leave/balance/balance.service.js';
+import { EmployeeRepository } from '../server/src/core/organisation/employee/employee.db.js';
+import { EntitlementRuleRepository } from '../server/src/apps/leave/entitlement/entitlement-rule.db.js';
+import { EntitlementRuleService } from '../server/src/apps/leave/entitlement/entitlement-rule.service.js';
+import { LeaveTypeRepository } from '../server/src/apps/leave/leave-type/leave-type.db.js';
+import { LeaveYearRepository } from '../server/src/apps/leave/leave-year/leave-year.db.js';
 import {
   earliestOpenDayFrom,
   LeaveYearService,
-} from '../server/src/features/leave-year/leave-year.service.js';
+} from '../server/src/apps/leave/leave-year/leave-year.service.js';
 
 config();
 
