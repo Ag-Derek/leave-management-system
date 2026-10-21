@@ -2,31 +2,31 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { type Actor, theSystem } from '../../src/auth/actor.js';
-import { Guard, NOT_AUTHORISED_MESSAGE, NotAuthorised } from '../../src/auth/policy.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { type Actor, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NOT_AUTHORISED_MESSAGE, NotAuthorised } from '../../src/core/auth/policy.js';
 import {
   AUDITED_ENTITIES,
   changedFields,
   REDACTED,
   UNATTRIBUTED,
-} from '../../src/features/audit/audit.js';
-import { AuditRepository } from '../../src/features/audit/audit.db.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { RoleRepository } from '../../src/features/role/role.db.js';
-import { SignInAccountRepository } from '../../src/features/sign-in/sign-in-account.db.js';
-import { Transactions } from '../../src/db/transaction.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { AuditService } from '../../src/features/audit/audit.service.js';
-import { DepartmentService } from '../../src/features/department/department.service.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
-import { RoleService } from '../../src/features/role/role.service.js';
-import { SignInService } from '../../src/features/sign-in/sign-in.service.js';
-import { StaffImportService } from '../../src/features/staff-import/staff-import.service.js';
-import { WorkPatternService } from '../../src/features/work-pattern/work-pattern.service.js';
+} from '../../src/core/audit/audit.js';
+import { AuditRepository } from '../../src/core/audit/audit.db.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { RoleRepository } from '../../src/core/identity/role/role.db.js';
+import { SignInAccountRepository } from '../../src/core/identity/sign-in/sign-in-account.db.js';
+import { Transactions } from '../../src/core/db/transaction.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { AuditService } from '../../src/core/audit/audit.service.js';
+import { DepartmentService } from '../../src/core/organisation/department/department.service.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { RoleService } from '../../src/core/identity/role/role.service.js';
+import { SignInService } from '../../src/core/identity/sign-in/sign-in.service.js';
+import { StaffImportService } from '../../src/core/organisation/staff-import/staff-import.service.js';
+import { WorkPatternService } from '../../src/core/calendar/work-pattern/work-pattern.service.js';
 import { recordingMailer, type RecordingMailer } from '../support/recording-mailer.js';
 import { seed } from '../../seeds/seed.mjs';
 
@@ -180,7 +180,7 @@ async function auditedTables(): Promise<string[]> {
 
 describe('what is audited', () => {
   it('is every table the application can change, and nothing else', async () => {
-    /* The list in ../../src/features/audit/audit.ts and the triggers the migration
+    /* The list in ../../src/core/audit/audit.ts and the triggers the migration
        created, asserted against each other. A table given a trigger and not named
        there is a table whose history nothing can read; a name there with no
        trigger is a promise of history that was never recorded. */

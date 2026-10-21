@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as leaveYearDomain from '../../src/features/leave-year/leave-year.js';
+import * as leaveYearDomain from '../../src/apps/leave/leave-year/leave-year.js';
 import {
   assertFitsAmong,
   assertMayBeChanged,
@@ -17,7 +17,7 @@ import {
   validateLeaveYearChanges,
   validateNewLeaveYear,
   yearFor,
-} from '../../src/features/leave-year/leave-year.js';
+} from '../../src/apps/leave/leave-year/leave-year.js';
 
 /**
  * The leave year, and what closing one means. §5.4.

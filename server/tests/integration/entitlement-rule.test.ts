@@ -2,9 +2,9 @@ import { Client } from 'pg';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import type { Employee } from '../../src/features/employee/employee.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import {
   DuplicateEntitlementRule,
   type EarliestOpenDay,
@@ -14,21 +14,21 @@ import {
   InvalidEntitlementRule,
   NOTHING_IS_CLOSED_YET,
   ReachesIntoAClosedYear,
-} from '../../src/features/entitlement/entitlement-rule.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { EntitlementRuleRepository } from '../../src/features/entitlement/entitlement-rule.db.js';
-import { LeaveTypeRepository } from '../../src/features/leave-type/leave-type.db.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
-import { EntitlementRuleService } from '../../src/features/entitlement/entitlement-rule.service.js';
-import { earliestOpenDayFrom } from '../../src/features/leave-year/leave-year.service.js';
-import { LeaveTypeService } from '../../src/features/leave-type/leave-type.service.js';
+} from '../../src/apps/leave/entitlement/entitlement-rule.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { EntitlementRuleRepository } from '../../src/apps/leave/entitlement/entitlement-rule.db.js';
+import { LeaveTypeRepository } from '../../src/apps/leave/leave-type/leave-type.db.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { EntitlementRuleService } from '../../src/apps/leave/entitlement/entitlement-rule.service.js';
+import { earliestOpenDayFrom } from '../../src/apps/leave/leave-year/leave-year.service.js';
+import { LeaveTypeService } from '../../src/apps/leave/leave-type/leave-type.service.js';
 import { seed } from '../../seeds/seed.mjs';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
 
 /**
  * Entitlement rules against a real database. FR 31, §5.5.
@@ -326,7 +326,8 @@ describe('what somebody is entitled to, on a day', () => {
       effectiveFrom: LAST_YEAR,
     });
 
-    const chain = await rules.rulesInForceOn(system, adwoa, annual, TODAY);
+    /* A fixed day before 2026-10-01, when the carryover migration's second annual rule starts. */
+    const chain = await rules.rulesInForceOn(system, adwoa, annual, '2026-09-30');
 
     expect(chain.map((rule) => rule.entitlementDays)).toEqual([25, 20]);
   });

@@ -15,7 +15,7 @@
 import type {
   NoticeLog,
   UndeliveredNotice,
-} from '../../src/features/notification/notification.service.js';
+} from '../../src/apps/leave/notification/notification.service.js';
 
 export interface RecordingNoticeLog extends NoticeLog {
   /** Everything that failed to reach somebody, in the order it happened. */

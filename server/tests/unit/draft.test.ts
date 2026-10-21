@@ -11,7 +11,7 @@ import {
   readyToSubmit,
   validateDraftContents,
   whatIsMissing,
-} from '../../src/features/leave-request/draft.js';
+} from '../../src/apps/leave/leave-request/draft.js';
 
 /**
  * Saving a request and finishing it later. FR 19.

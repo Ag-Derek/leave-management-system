@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { APPROVER_ROLES } from '../../src/features/leave-type/approval-chain.js';
-import type { LeaveBalance } from '../../src/features/balance/balance.js';
-import type { Employee } from '../../src/features/employee/employee.js';
-import type { LeaveDecision } from '../../src/features/leave-request/leave-decision.js';
-import type { LeaveRequest } from '../../src/features/leave-request/leave-request.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { APPROVER_ROLES } from '../../src/apps/leave/leave-type/approval-chain.js';
+import type { LeaveBalance } from '../../src/apps/leave/balance/balance.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
+import type { LeaveDecision } from '../../src/apps/leave/leave-request/leave-decision.js';
+import type { LeaveRequest } from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   type ApproverQueue,
   bySoonestToStart,
@@ -15,15 +15,15 @@ import {
   type QueueItem,
   queueFor,
   staffsAnyDesk,
-} from '../../src/features/leave-request/approver-queue.js';
-import { desksStaffedBy, leaveRequestPolicy } from '../../src/features/leave-request/policy.js';
+} from '../../src/apps/leave/leave-request/approver-queue.js';
+import { desksStaffedBy, leaveRequestPolicy } from '../../src/apps/leave/leave-request/policy.js';
 import {
   type LeaveType,
   type NewLeaveType,
   validateNewLeaveType,
-} from '../../src/features/leave-type/leave-type.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import type { Actor } from '../../src/auth/actor.js';
+} from '../../src/apps/leave/leave-type/leave-type.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import type { Actor } from '../../src/core/auth/actor.js';
 
 /** The approver queue, as rules. FR 20, FR 40, FR 17, FR 18, FR 48, §8.6a. */
 

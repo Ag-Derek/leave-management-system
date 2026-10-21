@@ -45,7 +45,7 @@ a session-level advisory lock does not survive a transaction pooler.
 **One folder per feature, holding everything that feature owns.**
 
 ```
-server/src/features/holiday/
+server/src/apps/leave/holiday/
   holiday.ts          the rules: types, validation, pure functions
   holiday.db.ts       the SQL, and constraint names mapped to errors
   holiday.service.ts  the door: asks the policy, validates, calls the repository
@@ -55,9 +55,9 @@ server/src/features/holiday/
 The suffix never repeats the folder. One policy is `policy.ts`, one router is
 `routes.ts`, background work is `*.job.ts`.
 
-What is shared stays out of `features/`: `auth/` the policy kernel, `db/` the
-connection and transactions, `shared/` dates, `http/` the Express app, plus
-`mail/` and `storage/`.
+What is shared stays out of `apps/`: `core/auth/` the policy kernel, `core/db/` the
+connection and transactions, `core/calendar/time.ts` dates, `app.ts` the Express app, plus
+`core/notification/` and `core/storage/`.
 
 **A story should touch one folder.** If it touches four, either the feature
 boundaries are wrong or the story is really several.
@@ -70,7 +70,9 @@ boundaries are wrong or the story is really several.
   arrangement in which forgetting is impossible rather than merely unlikely.
 * **The SQL is the source of truth.** No library generates or owns the schema, and
   no schema change happens outside a migration.
-* **Only `db/` and `*.db.ts` import Kysely or `pg`.**
+* **Only `core/db/` and `*.db.ts` import Kysely or `pg`.**
+* **`core/` never imports `apps/`, and no app imports another.** `npm run lint`
+  enforces it; the rules and known exceptions are in `.dependency-cruiser.cjs`.
 * **Comments carry the first sentence and the requirement reference**, not the
   argument. Reasoning belongs in the design document and the commit message.
 

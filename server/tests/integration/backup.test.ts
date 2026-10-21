@@ -5,7 +5,13 @@ import { basename, join } from 'node:path';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
-import { backUp, compare, type Manifest, restore, RestoreRefused } from '../../src/db/backup.js';
+import {
+  backUp,
+  compare,
+  type Manifest,
+  restore,
+  RestoreRefused,
+} from '../../src/core/db/backup.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /** Backup and a verified restore. NFR AVL 02. Needs PG_BIN. */

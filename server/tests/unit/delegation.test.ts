@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { APPROVER_ROLES } from '../../src/features/leave-type/approval-chain.js';
-import type { Actor } from '../../src/auth/actor.js';
+import { APPROVER_ROLES } from '../../src/apps/leave/leave-type/approval-chain.js';
+import type { Actor } from '../../src/core/auth/actor.js';
 import {
   AlreadyDelegated,
   type ApprovalDelegation,
@@ -10,14 +10,14 @@ import {
   delegationsThatBearOn,
   InvalidDelegation,
   validateNewDelegation,
-} from '../../src/features/leave-request/delegation.js';
+} from '../../src/apps/leave/leave-request/delegation.js';
 import {
   answeredOnBehalfOf,
   desksHandedTo,
   desksStaffedBy,
   leaveRequestPolicy,
-} from '../../src/features/leave-request/policy.js';
-import type { RoleCode } from '../../src/features/role/roles.js';
+} from '../../src/apps/leave/leave-request/policy.js';
+import type { RoleCode } from '../../src/core/identity/role/roles.js';
 
 /**
  * An approver hands their approvals to a colleague. FR 49, §8.6a.

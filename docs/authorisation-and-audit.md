@@ -30,11 +30,11 @@ await employees.list(actor);           // and refuses before it reads anything
 **An `Actor` is who is asking.** An employee id, the roles they were granted, and
 whether anybody reports to them. It is the earlier `Authority` with a name
 attached rather than a second shape beside it, and it is minted in exactly one
-place — `SignInService`, which has just proved who somebody is. `server/src/auth/actor.ts`.
+place — `SignInService`, which has just proved who somebody is. `server/src/core/auth/actor.ts`.
 
-**A policy is one object per resource type**, in `server/src/features/*/policy.ts`,
+**A policy is one object per resource type**, in `server/src/**/policy.ts`,
 made of pure functions from an actor and a record to a `Decision`. So
-`features/employee/policy.ts` is the complete answer to "who may see an employee record",
+`core/organisation/employee/policy.ts` is the complete answer to "who may see an employee record",
 readable in a minute by somebody who has never seen the system. Policies never
 throw and never touch a database, which is why the whole matrix of who may do
 what is enumerated in a unit test rather than sampled in an integration one.
@@ -333,7 +333,7 @@ nothing above it changes.
 **The session is a signed cookie and nothing else.** It carries an
 employee id, when it was issued, and an HMAC over both — and **no roles**, because
 `signIn` hands back an actor that is the *answer* to "who is this" and never the
-evidence for it. `http/identify.ts` derives its own on every request; an actor
+evidence for it. `core/http/identify.ts` derives its own on every request; an actor
 never arrives over the wire.
 
 There is no session table, so there is nothing to revoke, and signing out clears
@@ -356,7 +356,7 @@ rather than the usual Lax. The day this API is called from another origin it nee
 a token in the same change.
 
 **No rate limit.** Four hundred refusals in a minute are four hundred lines and no
-delay. The counter belongs in front of the sign in routes in `http/app.ts`, with
+delay. The counter belongs in front of the sign in routes in `app.ts`, with
 the one unlimited password guesses need. It needs doing, and it is not done.
 
 **`theSystem()` is a back door with a name on it.** A job, a migration, a seed and
@@ -409,7 +409,7 @@ investigating a crash.
 **It cannot be composed wrongly.** The entry is the row, not somebody's
 description of the row.
 
-The table types in `server/src/db/schema.ts` make every column unwritable, so
+The table types in `server/src/core/db/schema.ts` make every column unwritable, so
 this is a rule the compiler holds as well as the prose.
 
 **`AUDITED_ENTITIES` is the list, and what is off it is off it on purpose.** An
@@ -428,7 +428,7 @@ anybody discarded — which is precisely what a draft exists not to be. FR 19.
 ### The application supplies the one thing the database cannot know
 
 Which person asked. Every audited write goes through `recording()` in
-`server/src/db/recording.ts`, which opens a transaction, puts the writer's name on
+`server/src/core/db/recording.ts`, which opens a transaction, puts the writer's name on
 it with `SET LOCAL`, and runs the write on that connection. `SET LOCAL` rather
 than `SET`, because the connection goes back to a pool and a session-level
 setting would attribute the next request's writes to whoever last borrowed it.
@@ -467,7 +467,7 @@ somebody asks.
 An entry holds the whole record either side of the change rather than a list of
 what moved. That is what settles an argument: "her start date says 2023" is
 answered by a snapshot and is not answered by knowing that somebody changed some
-fields in March. `changedFields()` in `server/src/features/audit/audit.ts` turns the pair
+fields in March. `changedFields()` in `server/src/core/audit/audit.ts` turns the pair
 back into a readable change.
 
 **No credential is ever in an entry.** A password hash in a table the application

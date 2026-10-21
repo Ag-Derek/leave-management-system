@@ -9,10 +9,10 @@ import {
   type Redelivered,
   summaryOf,
   wouldGiveUpAfter,
-} from '../../src/features/notification/delivery.js';
-import { notificationPolicy } from '../../src/features/notification/policy.js';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import type { RoleCode } from '../../src/features/role/roles.js';
+} from '../../src/apps/leave/notification/delivery.js';
+import { notificationPolicy } from '../../src/apps/leave/notification/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import type { RoleCode } from '../../src/core/identity/role/roles.js';
 
 /**
  * When a failed send is tried again. FR 59, §7.1.

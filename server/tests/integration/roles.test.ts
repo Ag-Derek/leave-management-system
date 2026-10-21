@@ -2,8 +2,8 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
 import {
   ASSIGNABLE_ROLES,
   LastSystemAdministrator,
@@ -11,23 +11,23 @@ import {
   RoleCannotBeRevoked,
   RoleNotHeld,
   UnknownRole,
-} from '../../src/features/role/roles.js';
-import { MANDATORY_ROLES } from '../../src/features/sign-in/mfa.js';
-import { SignInAccountNotFound } from '../../src/features/sign-in/sign-in.js';
-import { EmployeeNotFound } from '../../src/features/employee/employee.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { RoleRepository } from '../../src/features/role/role.db.js';
-import { SignInAccountRepository } from '../../src/features/sign-in/sign-in-account.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
-import { RoleService } from '../../src/features/role/role.service.js';
-import { SignInService } from '../../src/features/sign-in/sign-in.service.js';
+} from '../../src/core/identity/role/roles.js';
+import { MANDATORY_ROLES } from '../../src/core/identity/sign-in/mfa.js';
+import { SignInAccountNotFound } from '../../src/core/identity/sign-in/sign-in.js';
+import { EmployeeNotFound } from '../../src/core/organisation/employee/employee.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { RoleRepository } from '../../src/core/identity/role/role.db.js';
+import { SignInAccountRepository } from '../../src/core/identity/sign-in/sign-in-account.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { RoleService } from '../../src/core/identity/role/role.service.js';
+import { SignInService } from '../../src/core/identity/sign-in/sign-in.service.js';
 import { recordingMailer } from '../support/recording-mailer.js';
 import { seed } from '../../seeds/seed.mjs';
-import { theSystem } from '../../src/auth/actor.js';
-import { Guard } from '../../src/auth/policy.js';
+import { theSystem } from '../../src/core/auth/actor.js';
+import { Guard } from '../../src/core/auth/policy.js';
 
 /**
  * Roles and role assignment, against a real database. §5.3.

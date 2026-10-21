@@ -3,27 +3,27 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { EmployeeNotFound } from '../../src/features/employee/employee.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { EmployeeNotFound } from '../../src/core/organisation/employee/employee.js';
 import {
   InvalidLedgerEntry,
   LEDGER_ENTRY_TYPES,
   REQUEST_MOVEMENTS,
   LedgerEntryNotFound,
   type LedgerEntryType,
-} from '../../src/features/balance/ledger.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import { BalanceRepository } from '../../src/features/balance/balance.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
-import { LedgerRepository } from '../../src/features/balance/ledger.db.js';
-import { Transactions } from '../../src/db/transaction.js';
-import { type Adjustment, BalanceService } from '../../src/features/balance/balance.service.js';
-import { LedgerService } from '../../src/features/balance/ledger.service.js';
-import { LeaveYearService } from '../../src/features/leave-year/leave-year.service.js';
+} from '../../src/apps/leave/balance/ledger.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import { BalanceRepository } from '../../src/apps/leave/balance/balance.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
+import { LedgerRepository } from '../../src/apps/leave/balance/ledger.db.js';
+import { Transactions } from '../../src/core/db/transaction.js';
+import { type Adjustment, BalanceService } from '../../src/apps/leave/balance/balance.service.js';
+import { LedgerService } from '../../src/apps/leave/balance/ledger.service.js';
+import { LeaveYearService } from '../../src/apps/leave/leave-year/leave-year.service.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /**
@@ -835,7 +835,7 @@ describe('who may read a balance, FR 53, FR 55, FR 56', () => {
     expect((await ledger.history(asOfficer(), people.officer)).length).toBe(1);
   });
 
-  /* Refused silently rather than openly, the default of ../src/auth/policy.ts:
+  /* Refused silently rather than openly, the default of ../src/core/auth/policy.ts:
      "you may not read employee 4471's leave" tells somebody that 4471 is
      somebody. */
   it('and nobody else', async () => {

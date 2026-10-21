@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { asHtml, asPlainText, literal } from '../../src/features/notification/formatting.js';
-import { fillIn } from '../../src/features/notification/wording.js';
+import { asHtml, asPlainText, literal } from '../../src/core/notification/formatting.js';
+import { fillIn } from '../../src/apps/leave/notification/wording.js';
 
 /** HR's light formatting in an email's message. FR 61. */
 

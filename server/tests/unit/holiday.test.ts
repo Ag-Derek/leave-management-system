@@ -12,8 +12,8 @@ import {
   validateHolidayChanges,
   validateNewHoliday,
   yearsWithoutHolidays,
-} from '../../src/features/holiday/holiday.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
+} from '../../src/apps/leave/holiday/holiday.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
 
 /**
  * The gazetted public holiday calendar. FR 22, §5.4.

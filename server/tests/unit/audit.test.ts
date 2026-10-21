@@ -9,7 +9,7 @@ import {
   readAuditSearch,
   REDACTED,
   UNATTRIBUTED,
-} from '../../src/features/audit/audit.js';
+} from '../../src/core/audit/audit.js';
 
 /**
  * The audit log, with no database. NFR AUD 01.

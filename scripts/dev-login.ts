@@ -14,13 +14,13 @@
 
 import { Client } from 'pg';
 import { config } from 'dotenv';
-import { theSystem } from '../server/src/auth/actor.js';
-import { Guard } from '../server/src/auth/policy.js';
-import { databaseFor } from '../server/src/db/index.js';
-import { EmployeeRepository } from '../server/src/features/employee/employee.db.js';
-import { RoleRepository } from '../server/src/features/role/role.db.js';
-import { SignInAccountRepository } from '../server/src/features/sign-in/sign-in-account.db.js';
-import { SignInService } from '../server/src/features/sign-in/sign-in.service.js';
+import { theSystem } from '../server/src/core/auth/actor.js';
+import { Guard } from '../server/src/core/auth/policy.js';
+import { databaseFor } from '../server/src/core/db/index.js';
+import { EmployeeRepository } from '../server/src/core/organisation/employee/employee.db.js';
+import { RoleRepository } from '../server/src/core/identity/role/role.db.js';
+import { SignInAccountRepository } from '../server/src/core/identity/sign-in/sign-in-account.db.js';
+import { SignInService } from '../server/src/core/identity/sign-in/sign-in.service.js';
 
 config();
 

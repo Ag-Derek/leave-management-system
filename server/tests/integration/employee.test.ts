@@ -1,8 +1,8 @@
 import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
 import {
   AlreadyTerminated,
   DuplicateEmployeeNumber,
@@ -17,29 +17,29 @@ import {
   ManagerNotFound,
   type NewEmployee,
   SecondRootEmployee,
-} from '../../src/features/employee/employee.js';
+} from '../../src/core/organisation/employee/employee.js';
 import {
   type Department,
   DepartmentDeactivated,
   DepartmentNotFound,
-} from '../../src/features/department/department.js';
+} from '../../src/core/organisation/department/department.js';
 import {
   concerns,
   everybodyOn,
   renderOrgChart,
   renderOrgChartAsMermaid,
-} from '../../src/features/employee/org-chart.js';
-import { WorkPatternNotFound } from '../../src/features/work-pattern/work-pattern.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { DepartmentService } from '../../src/features/department/department.service.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
+} from '../../src/core/organisation/employee/org-chart.js';
+import { WorkPatternNotFound } from '../../src/core/calendar/work-pattern/work-pattern.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { DepartmentService } from '../../src/core/organisation/department/department.service.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
 import { seed } from '../../seeds/seed.mjs';
 import type { Kysely } from 'kysely';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
 
 /**
  * The employee record against a real database. FR 01 to FR 06.
@@ -302,7 +302,7 @@ describe('the values a record may hold', () => {
     ['employee_gender_known', GENDERS],
   ])('%s permits exactly the values the code knows about', async (constraint, known) => {
     // The same list is written twice, in the migration and in
-    // src/features/employee/employee.ts. This is what stops the two drifting: add a value
+    // src/core/organisation/employee/employee.ts. This is what stops the two drifting: add a value
     // to one and forget the other and the suite fails rather than production.
     expect(await permittedBy(constraint as string)).toEqual(
       [...(known as readonly string[])].sort(),

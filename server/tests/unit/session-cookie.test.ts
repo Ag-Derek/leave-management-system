@@ -9,7 +9,7 @@ import {
   sessionCookieOptions,
   sessionSecretFrom,
   whoIsThis,
-} from '../../src/features/sign-in/session-cookie.routes.js';
+} from '../../src/core/identity/sign-in/session-cookie.routes.js';
 
 /**
  * The session cookie.

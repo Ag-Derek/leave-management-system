@@ -2,9 +2,9 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import type { Employee } from '../../src/features/employee/employee.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import {
   balanceMayBeExceededWithDocument,
   countsWorkingDays,
@@ -18,17 +18,17 @@ import {
   LeaveTypeRetired,
   NotEligibleForLeaveType,
   noticeShortfall,
-} from '../../src/features/leave-type/leave-type.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { LeaveTypeRepository } from '../../src/features/leave-type/leave-type.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
-import { LeaveTypeService } from '../../src/features/leave-type/leave-type.service.js';
+} from '../../src/apps/leave/leave-type/leave-type.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { LeaveTypeRepository } from '../../src/apps/leave/leave-type/leave-type.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { LeaveTypeService } from '../../src/apps/leave/leave-type/leave-type.service.js';
 import { seed } from '../../seeds/seed.mjs';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
 
 /**
  * Leave types against a real database. FR 21, FR 31, FR 32, §5.5.

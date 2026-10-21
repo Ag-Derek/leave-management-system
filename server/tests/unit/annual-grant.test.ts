@@ -10,8 +10,8 @@ import {
   reasonFor,
   summaryOf,
   wasGranted,
-} from '../../src/features/entitlement/annual-grant.js';
-import { BY_CALENDAR_DAYS, type ProRataRule } from '../../src/features/entitlement/pro-rata.js';
+} from '../../src/apps/leave/entitlement/annual-grant.js';
+import { BY_CALENDAR_DAYS, type ProRataRule } from '../../src/apps/leave/entitlement/pro-rata.js';
 
 /**
  * The annual grant of entitlement. FR 30.
@@ -219,7 +219,7 @@ describe('what somebody is granted for a year', () => {
 
   /* Whether a year has already been granted is deliberately not asked here: a pure
      function would be asking it a moment before the write, which is the window the
-     lock was built to close. `daysToGrant` in features/balance/balance.ts asks it inside that lock. */
+     lock was built to close. `daysToGrant` in apps/leave/balance/balance.ts asks it inside that lock. */
   it('and has no opinion about whether it has been granted before', () => {
     expect(Object.keys(FULL_YEAR)).not.toContain('alreadyGranted');
     expect(granted(FULL_YEAR)).toBe(20);

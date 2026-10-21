@@ -19,14 +19,14 @@ import {
   sniffContentType,
   validateContent,
   validateFilename,
-} from '../../src/features/leave-request/attachment.js';
+} from '../../src/apps/leave/leave-request/attachment.js';
 import type {
   LeaveRequest,
   RequestStatus,
-} from '../../src/features/leave-request/leave-request.js';
-import type { LeaveType } from '../../src/features/leave-type/leave-type.js';
-import { validateNewLeaveType } from '../../src/features/leave-type/leave-type.js';
-import { createScanner, ScannerUnavailable } from '../../src/scanning/index.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
+import type { LeaveType } from '../../src/apps/leave/leave-type/leave-type.js';
+import { validateNewLeaveType } from '../../src/apps/leave/leave-type/leave-type.js';
+import { createScanner, ScannerUnavailable } from '../../src/core/scanning/index.js';
 
 /**
  * Evidence on a request. FR 12, FR 13, NFR SEC 07.

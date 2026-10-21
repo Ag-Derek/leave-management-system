@@ -2,15 +2,15 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { columnsThatDiffer, isClean } from '../../src/features/balance/reconciliation.js';
-import { BalanceReconciliation } from '../../src/features/balance/balance-reconciliation.job.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { ReconciliationRepository } from '../../src/features/balance/reconciliation.db.js';
-import { RoleRepository } from '../../src/features/role/role.db.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { columnsThatDiffer, isClean } from '../../src/apps/leave/balance/reconciliation.js';
+import { BalanceReconciliation } from '../../src/apps/leave/balance/balance-reconciliation.job.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { ReconciliationRepository } from '../../src/apps/leave/balance/reconciliation.db.js';
+import { RoleRepository } from '../../src/core/identity/role/role.db.js';
 import { recordingMailer, type RecordingMailer } from '../support/recording-mailer.js';
 import { seed } from '../../seeds/seed.mjs';
 
@@ -144,7 +144,7 @@ async function post(
   await insertEntry(row);
 }
 
-/** The four kinds of movement a leave request causes. See ../../src/features/balance/ledger.ts. */
+/** The four kinds of movement a leave request causes. See ../../src/apps/leave/balance/ledger.ts. */
 const REQUEST_SHAPED = ['RESERVATION', 'DEDUCTION', 'RELEASE', 'RECALCULATION'];
 
 /** The request the request-shaped entries of the current test are filed under. */

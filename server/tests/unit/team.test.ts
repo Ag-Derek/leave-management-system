@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { type Actor, signedInAs } from '../../src/auth/actor.js';
-import type { LeaveBalance } from '../../src/features/balance/balance.js';
-import type { Employee } from '../../src/features/employee/employee.js';
-import type { LeaveRequest } from '../../src/features/leave-request/leave-request.js';
+import { type Actor, signedInAs } from '../../src/core/auth/actor.js';
+import type { LeaveBalance } from '../../src/apps/leave/balance/balance.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
+import type { LeaveRequest } from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   type LeaveType,
   type NewLeaveType,
   validateNewLeaveType,
-} from '../../src/features/leave-type/leave-type.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import { teamPolicy } from '../../src/features/team/policy.js';
-import { type TeamFacts, type TeamView, teamViewFor } from '../../src/features/team/team.js';
+} from '../../src/apps/leave/leave-type/leave-type.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import { teamPolicy } from '../../src/apps/leave/team/policy.js';
+import { type TeamFacts, type TeamView, teamViewFor } from '../../src/apps/leave/team/team.js';
 
 /** A manager's view of their direct reports, as rules. FR 55, FR 56. */
 

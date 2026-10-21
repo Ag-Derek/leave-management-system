@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Employee } from '../../src/features/employee/employee.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import {
   buildOrgChart,
   concerns,
@@ -7,7 +7,7 @@ import {
   renderOrgChart,
   renderOrgChartAsMermaid,
   type OrgChart,
-} from '../../src/features/employee/org-chart.js';
+} from '../../src/core/organisation/employee/org-chart.js';
 
 /**
  * The reporting structure, as a chart. FR 09.

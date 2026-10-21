@@ -5,8 +5,8 @@ import {
   LeaveCannotBeMoved,
   recalculationTo,
   type RequestStatus,
-} from '../../src/features/leave-request/leave-request.js';
-import type { Holiday } from '../../src/features/holiday/holiday.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
+import type { Holiday } from '../../src/apps/leave/holiday/holiday.js';
 import {
   NOT_CREDITED_REASONS,
   notCreditedInWords,
@@ -14,9 +14,12 @@ import {
   reasonForRecalculation,
   recalculationInWords,
   whatAHolidayCredits,
-} from '../../src/features/holiday/recalculation.js';
-import { type LeaveType, validateNewLeaveType } from '../../src/features/leave-type/leave-type.js';
-import type { WorkPattern } from '../../src/features/work-pattern/work-pattern.js';
+} from '../../src/apps/leave/holiday/recalculation.js';
+import {
+  type LeaveType,
+  validateNewLeaveType,
+} from '../../src/apps/leave/leave-type/leave-type.js';
+import type { WorkPattern } from '../../src/core/calendar/work-pattern/work-pattern.js';
 
 /**
  * A public holiday declared inside leave somebody already had. FR 25, §8.8.

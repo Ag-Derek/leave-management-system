@@ -4,12 +4,12 @@ import {
   formFor,
   requestableLeaveTypeFor,
   rulesFor,
-} from '../../src/features/leave-request/request-form.js';
+} from '../../src/apps/leave/leave-request/request-form.js';
 import {
   type LeaveType,
   type NewLeaveType,
   validateNewLeaveType,
-} from '../../src/features/leave-type/leave-type.js';
+} from '../../src/apps/leave/leave-type/leave-type.js';
 
 /**
  * What a kind of leave asks of somebody, before they have typed anything. FR 13, FR 17, FR 18, FR 32f.

@@ -2,9 +2,9 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { NotACompanyEmail } from '../../src/features/sign-in/company-email.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { NotACompanyEmail } from '../../src/core/identity/sign-in/company-email.js';
 import {
   EmploymentHasEnded,
   SignInAccountExists,
@@ -12,20 +12,20 @@ import {
   SignInAddressMustBeTheWorkAddress,
   SignInRefused,
   WeakPassword,
-} from '../../src/features/sign-in/sign-in.js';
-import { EmployeeNotFound } from '../../src/features/employee/employee.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { RoleRepository } from '../../src/features/role/role.db.js';
-import { SignInAccountRepository } from '../../src/features/sign-in/sign-in-account.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
-import { type SignedIn, SignInService } from '../../src/features/sign-in/sign-in.service.js';
+} from '../../src/core/identity/sign-in/sign-in.js';
+import { EmployeeNotFound } from '../../src/core/organisation/employee/employee.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { RoleRepository } from '../../src/core/identity/role/role.db.js';
+import { SignInAccountRepository } from '../../src/core/identity/sign-in/sign-in-account.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { type SignedIn, SignInService } from '../../src/core/identity/sign-in/sign-in.service.js';
 import { recordingMailer } from '../support/recording-mailer.js';
 import { seed } from '../../seeds/seed.mjs';
-import { theSystem } from '../../src/auth/actor.js';
-import { Guard } from '../../src/auth/policy.js';
+import { theSystem } from '../../src/core/auth/actor.js';
+import { Guard } from '../../src/core/auth/policy.js';
 
 /**
  * Signing in with a company email address, against a real database. NFR SEC 01.

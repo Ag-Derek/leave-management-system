@@ -1,5 +1,5 @@
-import type { Mailer } from '../../src/mail/mailer.js';
-import type { Mail, SentMail } from '../../src/mail/transport.js';
+import type { Mailer } from '../../src/core/notification/mailer.js';
+import type { Mail, SentMail } from '../../src/core/notification/transport.js';
 
 /**
  * A {@link Mailer} that keeps what it was given and opens no socket.

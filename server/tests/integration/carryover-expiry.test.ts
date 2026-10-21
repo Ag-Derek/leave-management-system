@@ -2,25 +2,25 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import type { CarryoverExpiryRun } from '../../src/features/leave-year/carryover-expiry.js';
-import { CarryoverExpiry } from '../../src/features/leave-year/carryover-expiry.job.js';
-import { BalanceRepository } from '../../src/features/balance/balance.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { EntitlementRuleRepository } from '../../src/features/entitlement/entitlement-rule.db.js';
-import { LeaveTypeRepository } from '../../src/features/leave-type/leave-type.db.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
-import { Transactions } from '../../src/db/transaction.js';
-import { BalanceService } from '../../src/features/balance/balance.service.js';
-import { EntitlementRuleService } from '../../src/features/entitlement/entitlement-rule.service.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import type { CarryoverExpiryRun } from '../../src/apps/leave/leave-year/carryover-expiry.js';
+import { CarryoverExpiry } from '../../src/apps/leave/leave-year/carryover-expiry.job.js';
+import { BalanceRepository } from '../../src/apps/leave/balance/balance.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { EntitlementRuleRepository } from '../../src/apps/leave/entitlement/entitlement-rule.db.js';
+import { LeaveTypeRepository } from '../../src/apps/leave/leave-type/leave-type.db.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
+import { Transactions } from '../../src/core/db/transaction.js';
+import { BalanceService } from '../../src/apps/leave/balance/balance.service.js';
+import { EntitlementRuleService } from '../../src/apps/leave/entitlement/entitlement-rule.service.js';
 import {
   earliestOpenDayFrom,
   LeaveYearService,
-} from '../../src/features/leave-year/leave-year.service.js';
+} from '../../src/apps/leave/leave-year/leave-year.service.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /** Carried annual leave expiring at the end of June, against the migrated rule. FR 36a. */

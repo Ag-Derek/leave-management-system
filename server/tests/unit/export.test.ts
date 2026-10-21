@@ -1,13 +1,13 @@
 import { inflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { tableAsCsv } from '../../src/export/csv.js';
+import { tableAsCsv } from '../../src/core/export/csv.js';
 import {
   fileNameOf,
   InvalidExportFormat,
   readExportFormat,
   type Table,
-} from '../../src/export/table.js';
-import { columnName, tableAsXlsx } from '../../src/export/xlsx.js';
+} from '../../src/core/export/table.js';
+import { columnName, tableAsXlsx } from '../../src/core/export/xlsx.js';
 
 /** Exporting a table. FR 64. */
 

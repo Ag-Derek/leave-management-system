@@ -15,8 +15,8 @@ import {
   isCodeRequired,
   MANDATORY_ROLES,
   MAX_CODE_ATTEMPTS,
-} from '../../src/features/sign-in/mfa.js';
-import type { SignInAccount } from '../../src/features/sign-in/sign-in.js';
+} from '../../src/core/identity/sign-in/mfa.js';
+import type { SignInAccount } from '../../src/core/identity/sign-in/sign-in.js';
 
 /**
  * NFR SEC 01, the second factor.

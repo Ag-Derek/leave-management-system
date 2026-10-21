@@ -10,7 +10,7 @@ import {
   ROLE_CODES,
   RoleNotHeld,
   UnknownRole,
-} from '../../src/features/role/roles.js';
+} from '../../src/core/identity/role/roles.js';
 
 /**
  * Roles, §5.3.

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { APPROVER_ROLES, type ApproverRole } from '../../src/features/leave-type/approval-chain.js';
+import {
+  APPROVER_ROLES,
+  type ApproverRole,
+} from '../../src/apps/leave/leave-type/approval-chain.js';
 import {
   canDecide,
   type DeskDecision,
@@ -16,7 +19,7 @@ import {
   standingOf,
   stagesSkipped,
   whatWouldRouteIt,
-} from '../../src/features/leave-request/routing.js';
+} from '../../src/apps/leave/leave-request/routing.js';
 
 /**
  * A request goes to somebody who can actually decide it. FR 48, FR 48b, §8.6a.

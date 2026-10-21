@@ -9,8 +9,8 @@ import {
   isClean,
   type Reconciliation,
   reportOf,
-} from '../../src/features/balance/reconciliation.js';
-import { discrepancyEmail } from '../../src/features/balance/balance-reconciliation.job.js';
+} from '../../src/apps/leave/balance/reconciliation.js';
+import { discrepancyEmail } from '../../src/apps/leave/balance/balance-reconciliation.job.js';
 
 /**
  * What a discrepancy means, once the database has found one. §7.4.
@@ -208,8 +208,8 @@ describe('the report', () => {
  */
 describe('nothing in the reconciliation corrects anything', () => {
   const files = [
-    '../../src/features/balance/balance-reconciliation.job.ts',
-    '../../src/features/balance/reconciliation.ts',
+    '../../src/apps/leave/balance/balance-reconciliation.job.ts',
+    '../../src/apps/leave/balance/reconciliation.ts',
   ];
 
   it.each(files)('%s never calls the rebuild', (file) => {
@@ -225,7 +225,7 @@ describe('nothing in the reconciliation corrects anything', () => {
      short enough that a third would be a decision somebody made on purpose. */
   it('and the repository it holds offers only reads', () => {
     const code = readFileSync(
-      join(import.meta.dirname, '../../src/features/balance/reconciliation.db.ts'),
+      join(import.meta.dirname, '../../src/apps/leave/balance/reconciliation.db.ts'),
       'utf8',
     )
       .replace(/\/\*[\s\S]*?\*\//g, ' ')

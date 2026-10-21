@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   LeaveAlreadyDecided,
   type LeaveDecision,
-} from '../../src/features/leave-request/leave-decision.js';
-import type { DayCount } from '../../src/features/leave-calculator/leave-calculator.js';
+} from '../../src/apps/leave/leave-request/leave-decision.js';
+import type { DayCount } from '../../src/apps/leave/leave-calculator/leave-calculator.js';
 import {
   decisionTo,
   assertDocumentationIsAttached,
@@ -46,17 +46,17 @@ import {
   ShortNoticeNotAcknowledged,
   validateLeaveRequestChanges,
   validateNewLeaveRequest,
-} from '../../src/features/leave-request/leave-request.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   COUNTING_BASES,
   countingBasisInWords,
   type LeaveType,
   TooLateToRecord,
   validateNewLeaveType,
-} from '../../src/features/leave-type/leave-type.js';
-import type { DesksAvailable } from '../../src/features/leave-request/routing.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import { eachDay } from '../../src/shared/time.js';
+} from '../../src/apps/leave/leave-type/leave-type.js';
+import type { DesksAvailable } from '../../src/apps/leave/leave-request/routing.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import { eachDay } from '../../src/core/calendar/time.js';
 
 /**
  * Asking for leave, and being told what it costs first. FR 10, FR 11.
@@ -1561,7 +1561,7 @@ describe('per-occasion leave, asked for before its days are granted', () => {
  * request, not open another screen — and that is a property of what the message says
  * rather than of the comparison that produced it.
  *
- * `daysToReserve` in ../../src/features/balance/balance.ts refuses the same thing inside the lock
+ * `daysToReserve` in ../../src/apps/leave/balance/balance.ts refuses the same thing inside the lock
  * and is the guarantee; ../integration/leave-request.test.ts is where the two are held
  * to the same answer, because only a real balance can show that.
  */

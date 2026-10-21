@@ -2,26 +2,26 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import type { Kysely } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
 import {
   DuplicateHoliday,
   type Holiday,
   HolidayInASettledYear,
   HolidayNotFound,
   InvalidHoliday,
-} from '../../src/features/holiday/holiday.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
-import { HolidayRepository } from '../../src/features/holiday/holiday.db.js';
-import { LeaveYearRepository } from '../../src/features/leave-year/leave-year.db.js';
-import { HolidayService } from '../../src/features/holiday/holiday.service.js';
+} from '../../src/apps/leave/holiday/holiday.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
+import { HolidayRepository } from '../../src/apps/leave/holiday/holiday.db.js';
+import { LeaveYearRepository } from '../../src/apps/leave/leave-year/leave-year.db.js';
+import { HolidayService } from '../../src/apps/leave/holiday/holiday.service.js';
 import {
   earliestOpenDayFrom,
   LeaveYearService,
-} from '../../src/features/leave-year/leave-year.service.js';
+} from '../../src/apps/leave/leave-year/leave-year.service.js';
 import { seed } from '../../seeds/seed.mjs';
-import { signedInAs, theSystem } from '../../src/auth/actor.js';
-import { Guard, NotAuthorised } from '../../src/auth/policy.js';
+import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
+import { Guard, NotAuthorised } from '../../src/core/auth/policy.js';
 
 /**
  * The public holiday calendar against a real database. FR 22, §5.4.

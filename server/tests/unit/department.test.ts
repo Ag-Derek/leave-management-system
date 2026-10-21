@@ -8,7 +8,7 @@ import {
   InvalidDepartment,
   validateDepartmentChanges,
   validateNewDepartment,
-} from '../../src/features/department/department.js';
+} from '../../src/core/organisation/department/department.js';
 
 /**
  * The rules for a department, checked without a database.

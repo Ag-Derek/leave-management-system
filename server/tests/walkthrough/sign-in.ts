@@ -5,23 +5,23 @@ import { Client } from 'pg';
 import { afterAll, beforeAll, describe, it } from 'vitest';
 import type { Kysely } from 'kysely';
 
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { CodeRefused } from '../../src/features/sign-in/mfa.js';
-import { SignInRefused } from '../../src/features/sign-in/sign-in.js';
-import { displayTimezone, formatInstant } from '../../src/shared/time.js';
-import { createMailer } from '../../src/mail/mailer.js';
-import { DepartmentRepository } from '../../src/features/department/department.db.js';
-import { EmployeeRepository } from '../../src/features/employee/employee.db.js';
-import { RoleRepository } from '../../src/features/role/role.db.js';
-import { SignInAccountRepository } from '../../src/features/sign-in/sign-in-account.db.js';
-import { WorkPatternRepository } from '../../src/features/work-pattern/work-pattern.db.js';
-import { noLeaveFollows } from '../../src/features/employee/employee.js';
-import { EmployeeService } from '../../src/features/employee/employee.service.js';
-import { SignInService } from '../../src/features/sign-in/sign-in.service.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { CodeRefused } from '../../src/core/identity/sign-in/mfa.js';
+import { SignInRefused } from '../../src/core/identity/sign-in/sign-in.js';
+import { displayTimezone, formatInstant } from '../../src/core/calendar/time.js';
+import { createMailer } from '../../src/core/notification/mailer.js';
+import { DepartmentRepository } from '../../src/core/organisation/department/department.db.js';
+import { EmployeeRepository } from '../../src/core/organisation/employee/employee.db.js';
+import { RoleRepository } from '../../src/core/identity/role/role.db.js';
+import { SignInAccountRepository } from '../../src/core/identity/sign-in/sign-in-account.db.js';
+import { WorkPatternRepository } from '../../src/core/calendar/work-pattern/work-pattern.db.js';
+import { noLeaveFollows } from '../../src/core/organisation/employee/employee.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { SignInService } from '../../src/core/identity/sign-in/sign-in.service.js';
 import { seed } from '../../seeds/seed.mjs';
-import { theSystem } from '../../src/auth/actor.js';
-import { Guard } from '../../src/auth/policy.js';
+import { theSystem } from '../../src/core/auth/actor.js';
+import { Guard } from '../../src/core/auth/policy.js';
 
 /**
  * A walkthrough of signing in, for a person rather than for a build.

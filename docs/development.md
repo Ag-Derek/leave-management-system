@@ -125,7 +125,7 @@ subdomain could mint themselves a company identity.
 An allow list that has been emptied by accident must lock everybody out, never
 let everybody in.
 
-The check lives in `server/src/features/sign-in/company-email.ts`. Use it at provisioning
+The check lives in `server/src/core/identity/sign-in/company-email.ts`. Use it at provisioning
 and at login both; NFR SEC 01 asks for both, and only one of them is the door an
 attacker knocks on.
 
@@ -187,7 +187,7 @@ on `SignInRefused.reason`, for the log. **Nothing that reaches a screen may read
 it and turn it back into a message.**
 
 **Passwords are scrypt, from `node:crypto`, with the cost recorded in the hash.**
-`server/src/features/sign-in/password.ts`, no dependency, per password salt, timing safe
+`server/src/core/identity/sign-in/password.ts`, no dependency, per password salt, timing safe
 comparison. Storing the parameters is what makes raising them possible later:
 existing hashes keep verifying and each is quietly rewritten at the owner's next
 sign in, which is the only moment the plain password is legitimately in hand.
@@ -342,7 +342,7 @@ actual colleagues. Leave it blank in production.
 
 ### Attachment storage
 
-Attachments go through the `Storage` interface in `server/src/storage`. In
+Attachments go through the `Storage` interface in `server/src/core/storage`. In
 development `STORAGE_DRIVER=local` writes them to `.storage`, which is git
 ignored. Production sets `STORAGE_DRIVER=supabase` with `SUPABASE_URL`,
 `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_BUCKET`, and changes nothing else.
@@ -365,7 +365,7 @@ await storage.delete(key); // succeeds whether or not it was there
 key; callers never choose one, never build a path, and never learn whether the
 bytes went to a disk or a bucket. Store the key on the attachment row and pass
 it back. If a path, a bucket name or a directory ever appears outside
-`server/src/storage`, that is the bug.
+`server/src/core/storage`, that is the bug.
 
 This is a security property, not housekeeping. Keys are 32 random bytes, so an
 attachment cannot be found by guessing, and it is never addressable except to
@@ -380,7 +380,7 @@ one of them public.
 
 ### Virus scanning
 
-Every attachment goes through the `Scanner` interface in `server/src/scanning`
+Every attachment goes through the `Scanner` interface in `server/src/core/scanning`
 before it can be downloaded or stand as evidence. NFR SEC 07.
 
 ```ts
@@ -444,7 +444,7 @@ that `biopsy-result.pdf` never reaches an access log.
 
 `/http` holds the app assembly, the middleware that turns a request into an
 `Actor`, and the error-to-status translation. Nothing in it decides anything —
-see the layering rule below, and `http/app.ts`, where the **order things are
+see the layering rule below, and `app.ts`, where the **order things are
 mounted in** is the one security property a route layer has to get right by itself.
 
 ### Layering rule
@@ -787,7 +787,7 @@ row can.
 | additivity — a year whole against a year month by month | an off by one at a period boundary, which twelve periods expose twelve times |
 
 **Two of the four zones are west of Greenwich, and that is load bearing rather than
-decorative.** Every date in `/shared/time.ts` is built at UTC midnight, which is
+decorative.** Every date in `/core/calendar/time.ts` is built at UTC midnight, which is
 still the same day everywhere east of Greenwich and the day before everywhere west
 of it. A sweep that only ran eastward would give a clean bill of health for exactly
 the bug it was written to find; the eastern two are kept because the opposite

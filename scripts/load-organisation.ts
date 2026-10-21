@@ -24,13 +24,13 @@
 import { readFile } from 'node:fs/promises';
 import { Client } from 'pg';
 import { config } from 'dotenv';
-import { theSystem } from '../server/src/auth/actor.js';
-import { Guard } from '../server/src/auth/policy.js';
-import { databaseFor } from '../server/src/db/index.js';
-import { Transactions } from '../server/src/db/transaction.js';
-import { DepartmentRepository } from '../server/src/features/department/department.db.js';
-import { DepartmentService } from '../server/src/features/department/department.service.js';
-import { StaffImportService } from '../server/src/features/staff-import/staff-import.service.js';
+import { theSystem } from '../server/src/core/auth/actor.js';
+import { Guard } from '../server/src/core/auth/policy.js';
+import { databaseFor } from '../server/src/core/db/index.js';
+import { Transactions } from '../server/src/core/db/transaction.js';
+import { DepartmentRepository } from '../server/src/core/organisation/department/department.db.js';
+import { DepartmentService } from '../server/src/core/organisation/department/department.service.js';
+import { StaffImportService } from '../server/src/core/organisation/staff-import/staff-import.service.js';
 
 config();
 

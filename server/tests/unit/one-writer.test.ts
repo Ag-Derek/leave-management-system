@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
  * ## What this is actually protecting against
  *
  * Not a rogue `UPDATE leave_balance`. The database has refused those on every
- * connection, and `db/schema.ts` types the columns so one does not
+ * connection, and `core/db/schema.ts` types the columns so one does not
  * compile.
  *
  * The realistic second writer is an honest service. The rollover story needs to post
@@ -69,9 +69,9 @@ const sources = readdirSync(SOURCE, { recursive: true, encoding: 'utf8' })
  * nothing after `adjust` and `correct` moved out of it.
  */
 const MAY_POST = [
-  'features/balance/ledger.db.ts',
-  'db/transaction.ts',
-  'features/balance/balance.service.ts',
+  'apps/leave/balance/ledger.db.ts',
+  'core/db/transaction.ts',
+  'apps/leave/balance/balance.service.ts',
 ];
 
 /**
@@ -82,7 +82,7 @@ const MAY_POST = [
  * the test two below asserts cannot post. They have to name it, because the
  * adjustment screen reads a ledger and `buildApp` is where a read service is built.
  */
-const ASSEMBLY = ['main.ts', 'http/app.ts'];
+const ASSEMBLY = ['main.ts', 'app.ts'];
 
 describe('one writer of balance movements', () => {
   it('there is source to read', () => {
@@ -106,7 +106,7 @@ describe('one writer of balance movements', () => {
       ({ file, code }) =>
         !MAY_POST.includes(file) &&
         !ASSEMBLY.includes(file) &&
-        file !== 'features/balance/ledger.service.ts' &&
+        file !== 'apps/leave/balance/ledger.service.ts' &&
         /LedgerRepository/.test(code),
     );
 
@@ -122,7 +122,7 @@ describe('one writer of balance movements', () => {
    * post an entry is asserted not to.
    */
   it('and the ledger service reads the account without writing to it', () => {
-    const ledger = sources.find(({ file }) => file === 'features/balance/ledger.service.ts');
+    const ledger = sources.find(({ file }) => file === 'apps/leave/balance/ledger.service.ts');
 
     expect(ledger).toBeDefined();
     expect(ledger?.code).toMatch(/entriesFor|correctionsAround/);
@@ -139,7 +139,7 @@ describe('one writer of balance movements', () => {
    * proves the lock works; this notices if it stops being asked for.
    */
   it('and the one writer holds the balance still before it checks one', () => {
-    const service = sources.find(({ file }) => file === 'features/balance/balance.service.ts');
+    const service = sources.find(({ file }) => file === 'apps/leave/balance/balance.service.ts');
 
     expect(service?.code).toMatch(/holdStill\(/);
     expect(service?.code).toMatch(/allOrNothing\(/);
@@ -151,8 +151,8 @@ describe('one writer of balance movements', () => {
   it('and nothing else decides whether the days are there', () => {
     const deciding = sources.filter(
       ({ file, code }) =>
-        file !== 'features/balance/balance.service.ts' &&
-        file !== 'features/balance/balance.ts' &&
+        file !== 'apps/leave/balance/balance.service.ts' &&
+        file !== 'apps/leave/balance/balance.ts' &&
         /daysTo(Reserve|Commit|Release)\s*\(/.test(code),
     );
 

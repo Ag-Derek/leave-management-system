@@ -6,8 +6,8 @@ import {
   NothingToDecide,
   TooManyToDecideAtOnce,
   validateBulkDecision,
-} from '../../src/features/leave-request/bulk-decision.js';
-import { RefusalNeedsAComment } from '../../src/features/leave-request/leave-decision.js';
+} from '../../src/apps/leave/leave-request/bulk-decision.js';
+import { RefusalNeedsAComment } from '../../src/apps/leave/leave-request/leave-decision.js';
 
 /**
  * What a batch is checked for before anything is decided. FR 51, FR 39.

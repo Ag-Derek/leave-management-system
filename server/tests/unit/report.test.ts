@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { type LeaveBalance, noMovementsYet } from '../../src/features/balance/balance.js';
-import { type Department, DepartmentNotFound } from '../../src/features/department/department.js';
-import type { Employee } from '../../src/features/employee/employee.js';
+import { type LeaveBalance, noMovementsYet } from '../../src/apps/leave/balance/balance.js';
+import {
+  type Department,
+  DepartmentNotFound,
+} from '../../src/core/organisation/department/department.js';
+import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import type {
   LeaveRequest,
   RequestStatus,
-} from '../../src/features/leave-request/leave-request.js';
-import { type LeaveType, LeaveTypeNotFound } from '../../src/features/leave-type/leave-type.js';
-import type { LeaveYear } from '../../src/features/leave-year/leave-year.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
+import { type LeaveType, LeaveTypeNotFound } from '../../src/apps/leave/leave-type/leave-type.js';
+import type { LeaveYear } from '../../src/apps/leave/leave-year/leave-year.js';
 import {
   AGREED_TURNAROUND_DAYS,
   carriedOverBalances,
@@ -22,7 +25,7 @@ import {
   readReportPeriod,
   readTurnaroundDays,
   requestsPastTurnaround,
-} from '../../src/features/report/report.js';
+} from '../../src/apps/leave/report/report.js';
 
 /** HR reporting. FR 63. */
 

@@ -2,9 +2,9 @@ import { Client } from 'pg';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { databaseForThisFile } from '../setup/test-database.js';
 import { type Kysely, sql } from 'kysely';
-import { databaseFor } from '../../src/db/index.js';
-import type { Database } from '../../src/db/schema.js';
-import { isCalendarDate } from '../../src/shared/time.js';
+import { databaseFor } from '../../src/core/db/index.js';
+import type { Database } from '../../src/core/db/schema.js';
+import { isCalendarDate } from '../../src/core/calendar/time.js';
 import { seed } from '../../seeds/seed.mjs';
 
 /**
@@ -186,7 +186,7 @@ describe('the columns', () => {
      The one on a recalculation is the gazetted day a credit was given for, kept beside the
      credit rather than read back through the holiday — a zone here would credit somebody
      for the day before the country stopped working. FR 25. */
-  it('the eighteen dates there are today are the ones expected', async () => {
+  it('the twenty dates there are today are the ones expected', async () => {
     const dates = (await temporalColumns())
       .filter((column) => column.data_type === 'date')
       .map((column) => `${column.table_name}.${column.column_name}`);
@@ -202,6 +202,9 @@ describe('the columns', () => {
       'leave_entitlement_event.occurred_on',
       'leave_entitlement_rule.effective_from',
       'leave_entitlement_rule.effective_to',
+      /** The days a leave plan covers. */
+      'leave_plan.end_date',
+      'leave_plan.start_date',
       'leave_request.end_date',
       'leave_request.start_date',
       /** FR 19. */
@@ -274,7 +277,7 @@ describe('the session', () => {
    * The pool's half, on its own.
    *
    * The database setting is taken away for the length of this test, so that the
-   * only thing left putting the connection into UTC is ../../src/db/index.ts.
+   * only thing left putting the connection into UTC is ../../src/core/db/index.ts.
    * That is the layer that has to hold on a database somebody has restored from a
    * backup, or brought up before this migration, or on a host that would not
    * permit the ALTER DATABASE — which is exactly when nobody is looking.

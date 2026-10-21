@@ -1,7 +1,7 @@
 import type { Transporter } from 'nodemailer';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { codeEmail } from '../../src/features/sign-in/mfa.js';
-import { createTransport, sendMail } from '../../src/mail/transport.js';
+import { codeEmail } from '../../src/core/identity/sign-in/mfa.js';
+import { createTransport, sendMail } from '../../src/core/notification/transport.js';
 
 /**
  * Proves the development mail path end to end: the application sends, Mailpit

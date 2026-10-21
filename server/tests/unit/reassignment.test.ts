@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { ApproverRole } from '../../src/features/leave-type/approval-chain.js';
+import type { ApproverRole } from '../../src/apps/leave/leave-type/approval-chain.js';
 import type {
   LeaveRequest,
   RequestStatus,
-} from '../../src/features/leave-request/leave-request.js';
+} from '../../src/apps/leave/leave-request/leave-request.js';
 import {
   lineMoved,
   reassignmentFor,
   reassignmentInWords,
   requestsThatFollow,
-} from '../../src/features/leave-request/reassignment.js';
+} from '../../src/apps/leave/leave-request/reassignment.js';
 
 /**
  * Pending leave follows the reporting line. FR 07, §8.4.

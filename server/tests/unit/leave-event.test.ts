@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysToLapse } from '../../src/features/balance/balance.js';
+import { daysToLapse } from '../../src/apps/leave/balance/balance.js';
 import {
   AlreadyLapsed,
   assertHasHappened,
@@ -16,7 +16,7 @@ import {
   reasonForLapse,
   validateNewLeaveEvent,
   wasLapsed,
-} from '../../src/features/leave-event/leave-event.js';
+} from '../../src/apps/leave/leave-event/leave-event.js';
 import {
   daysLapsed,
   type EntitlementExpiryRun,
@@ -24,8 +24,8 @@ import {
   type NotLapsed,
   notLapsedCounts,
   summaryOf,
-} from '../../src/features/entitlement/entitlement-expiry.job.js';
-import { monthsAfter } from '../../src/shared/time.js';
+} from '../../src/apps/leave/entitlement/entitlement-expiry.job.js';
+import { monthsAfter } from '../../src/core/calendar/time.js';
 
 /**
  * Entitlement that arrives with an event. FR 32g, FR 32e, §8.6aa.
