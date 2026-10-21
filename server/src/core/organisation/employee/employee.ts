@@ -456,6 +456,9 @@ export interface Exit {
  *
  * The port `LeaveRequestService` fills. Declared here rather than imported, so this
  * feature keeps its own dependency direction.
+ *
+ * To become EmployeeChangeSubscriber, each app registering its own. Compromise 3 in
+ * .dependency-cruiser.cjs.
  */
 export interface LeaveThatFollows {
   followTheReportingLine(actor: Actor, move: ReportingLineMove): Promise<unknown>;

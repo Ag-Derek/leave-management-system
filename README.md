@@ -71,6 +71,8 @@ boundaries are wrong or the story is really several.
 * **The SQL is the source of truth.** No library generates or owns the schema, and
   no schema change happens outside a migration.
 * **Only `core/db/` and `*.db.ts` import Kysely or `pg`.**
+* **`core/` never imports `apps/`, and no app imports another.** `npm run lint`
+  enforces it; the rules and known exceptions are in `.dependency-cruiser.cjs`.
 * **Comments carry the first sentence and the requirement reference**, not the
   argument. Reasoning belongs in the design document and the commit message.
 
