@@ -326,7 +326,8 @@ describe('what somebody is entitled to, on a day', () => {
       effectiveFrom: LAST_YEAR,
     });
 
-    const chain = await rules.rulesInForceOn(system, adwoa, annual, TODAY);
+    /* A fixed day before 2026-10-01, when the carryover migration's second annual rule starts. */
+    const chain = await rules.rulesInForceOn(system, adwoa, annual, '2026-09-30');
 
     expect(chain.map((rule) => rule.entitlementDays)).toEqual([25, 20]);
   });

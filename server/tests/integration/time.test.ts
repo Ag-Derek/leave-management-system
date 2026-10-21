@@ -186,7 +186,7 @@ describe('the columns', () => {
      The one on a recalculation is the gazetted day a credit was given for, kept beside the
      credit rather than read back through the holiday — a zone here would credit somebody
      for the day before the country stopped working. FR 25. */
-  it('the eighteen dates there are today are the ones expected', async () => {
+  it('the twenty dates there are today are the ones expected', async () => {
     const dates = (await temporalColumns())
       .filter((column) => column.data_type === 'date')
       .map((column) => `${column.table_name}.${column.column_name}`);
@@ -202,6 +202,9 @@ describe('the columns', () => {
       'leave_entitlement_event.occurred_on',
       'leave_entitlement_rule.effective_from',
       'leave_entitlement_rule.effective_to',
+      /** The days a leave plan covers. */
+      'leave_plan.end_date',
+      'leave_plan.start_date',
       'leave_request.end_date',
       'leave_request.start_date',
       /** FR 19. */
