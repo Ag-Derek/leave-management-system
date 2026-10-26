@@ -752,7 +752,9 @@ export function assertWithinBackdatingWindow(type: LeaveType, daysOfNotice: numb
 export function isBeyondTheBackdatingWindow(type: LeaveType, daysOfNotice: number): boolean {
   requireWholeDays('daysOfNotice', 'Notice', daysOfNotice);
 
-  return daysOfNotice < 0 && -daysOfNotice > type.maxBackdateCalendarDays;
+  /* Leave may be entered any number of days after the fact, by anyone. The window is no
+     longer enforced; `maxBackdateCalendarDays` is still stored on the type but is not read. */
+  return false;
 }
 
 /**

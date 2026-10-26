@@ -319,11 +319,10 @@ function QueueCard({
                 <span key={warning.code} className={`tag flag is-${warning.code.toLowerCase()}`}>
                   {warning.code !== 'BACKDATED'
                     ? 'Short notice'
-                    : /* FR 18. Two different pieces of news under one flag: recorded
-                         on the way back in, or entered past the window as HR's exception. */
+                    : /* FR 18. Whether whoever entered it said why it is late. */
                       item.lateEntryReason === null
                       ? 'Back dated'
-                      : 'Entered by HR'}
+                      : 'Back dated, with reason'}
                 </span>
               ))}
               <span className="tag desk">{deskLabel(item.desk)}</span>

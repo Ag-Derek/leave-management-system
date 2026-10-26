@@ -134,26 +134,20 @@ describe('notice and backdating, which look symmetrical and are not', () => {
     expect(kindsOf(stored({ minNoticeCalendarDays: 0 }))).not.toContain('NOTICE');
   });
 
-  it('says backdating refuses, and names who can still enter it', () => {
-    /* FR 18, the window that does refuse, and the person who hits it cannot use the escape
-       hatch themselves — so the sentence has to name HR. */
-    const said_ = said(stored({ maxBackdateCalendarDays: 7 }), 'BACKDATING');
-
-    expect(said_).toContain('up to 7 days');
-    expect(said_).toContain('only HR');
+  it('says leave can be entered any time after the fact, whatever window the type stores', () => {
+    /* FR 18. No backdating window is enforced. */
+    for (const window of [0, 7, 90]) {
+      expect(said(stored({ maxBackdateCalendarDays: window }), 'BACKDATING')).toContain(
+        'at any time after the fact',
+      );
+    }
   });
 
-  it('says so plainly where nothing may be backdated at all', () => {
-    expect(said(stored({ maxBackdateCalendarDays: 0 }), 'BACKDATING')).toContain(
-      'cannot be entered once it has started',
-    );
-  });
-
-  it('marks both as asking something', () => {
+  it('marks notice as asking something and backdating as not', () => {
     const type = stored({ minNoticeCalendarDays: 14, maxBackdateCalendarDays: 7 });
 
     expect(ruleOf(type, 'NOTICE')?.asks).toBe(true);
-    expect(ruleOf(type, 'BACKDATING')?.asks).toBe(true);
+    expect(ruleOf(type, 'BACKDATING')?.asks).toBe(false);
   });
 });
 

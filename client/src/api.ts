@@ -2313,6 +2313,8 @@ export async function askForLeave(input: {
   /** FR 10. Sent as typed; whether nothing is allowed is the leave type's rule. */
   reason: string;
   acknowledgesShortNotice?: boolean;
+  /** FR 18. Optional; kept only for leave already started. */
+  lateEntryReason?: string;
   /** FR 13, FR 32a. Attachment ids, never files. */
   evidence?: string[];
 }): Promise<Submitted> {

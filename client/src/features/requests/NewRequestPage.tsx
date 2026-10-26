@@ -59,6 +59,8 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
   /** The plan this was opened from, removed once the request is in. */
   const fromPlan = useRef(prefilled('plan'));
   const [reason, setReason] = useState('');
+  /** FR 18. Optional; the server keeps it only for leave already started. */
+  const [lateEntryReason, setLateEntryReason] = useState('');
   /** FR 17. Answered about one period, so it is cleared whenever the period moves. */
   const [acknowledged, setAcknowledged] = useState(false);
   /**
@@ -185,6 +187,7 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
       to,
       reason,
       acknowledgesShortNotice: acknowledged,
+      lateEntryReason,
       evidence,
     })
       .then((next) => {
@@ -208,13 +211,14 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
       .finally(() => {
         setAsking(false);
       });
-  }, [leaveTypeId, from, to, reason, acknowledged, evidence, onSignedOut]);
+  }, [leaveTypeId, from, to, reason, acknowledged, lateEntryReason, evidence, onSignedOut]);
 
   const startAgain = useCallback(() => {
     setSubmitted(undefined);
     setFrom('');
     setTo('');
     setReason('');
+    setLateEntryReason('');
     setAcknowledged(false);
     /* The files that went on the last request went with it. What is waiting now is whatever
        the panel reads back when it comes round again. FR 13. */
@@ -304,11 +308,7 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
                 <input
                   type="date"
                   value={from}
-                  /* FR 18. The earliest day this kind of leave may still be entered,
-                     off `maxBackdateCalendarDays` rather than off anything decided here. It
-                     narrows the picker and refuses nothing — the server answers a date typed
-                     past it with the sentence naming HR. */
-                  min={earliestEntry(chosen)}
+                  /* FR 18. No earliest day: leave may be entered any time after the fact. */
                   disabled={asking}
                   required
                   {...marks('from')}
@@ -374,6 +374,23 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
                 ? 'Whoever approves this will read what you write here.'
                 : `${sentenceCase(chosen.approvedBy)} will read what you write here.`}
             </p>
+
+            {/* FR 18. Optional, and only for leave that has already started. */}
+            {from === '' || from >= todayInWholeDays() ? null : (
+              <label>
+                Why it is being entered late (optional)
+                <textarea
+                  value={lateEntryReason}
+                  rows={2}
+                  maxLength={REASON_LIMIT}
+                  disabled={asking}
+                  {...marks('lateEntryReason')}
+                  onChange={(event) => {
+                    setLateEntryReason(event.target.value);
+                  }}
+                />
+              </label>
+            )}
 
             {/* FR 12, FR 13. Here rather than after submitting, because FR 13 is
                 answered *at* submission: a kind of leave that asks for a certificate refuses
@@ -737,22 +754,15 @@ function Skeleton() {
   );
 }
 
-/**
- * The earliest day this kind of leave may still be entered. FR 18.
- *
- * Ten characters, built by walking a UTC date back rather than by arithmetic on a string, and
- * undefined before a type is chosen — a bound invented here would be a bound nothing enforces.
- */
-function earliestEntry(type: RequestableLeaveType | undefined): string | undefined {
-  if (type === undefined) {
-    return undefined;
-  }
+/** Today, ten characters, in the reader's own zone. */
+function todayInWholeDays(): string {
+  const now = new Date();
 
-  const day = new Date();
-
-  day.setUTCDate(day.getUTCDate() - type.maxBackdateCalendarDays);
-
-  return day.toISOString().slice(0, 10);
+  return (
+    `${String(now.getFullYear()).padStart(4, '0')}-` +
+    `${String(now.getMonth() + 1).padStart(2, '0')}-` +
+    `${String(now.getDate()).padStart(2, '0')}`
+  );
 }
 
 /**

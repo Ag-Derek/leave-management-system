@@ -625,7 +625,7 @@ export function flagsFor(input: {
   backdatedBy: number;
   noticeGivenDays: number;
   type: LeaveType | undefined;
-  /** FR 18. HR's account of the lateness, where the window was exceeded. */
+  /** FR 18. Why it was entered late, where whoever entered it said. */
   lateEntryReason?: string | null;
 }): QueueWarning[] {
   const { typeName, shortNoticeBy, backdatedBy, noticeGivenDays, type } = input;
@@ -641,13 +641,11 @@ export function flagsFor(input: {
       inWords:
         `This leave had already started when it was asked for. It began ${days(backdatedBy)} ` +
         `before the request was made. ` +
-        /* Two different pieces of news, and the second is the one an approver has to
-           weigh: inside the window this is the ordinary way an absence gets recorded, and past
-           it somebody made an exception and said why. */
+        /* No window is enforced; the reason is whatever the person entering it chose to say. */
         (lateEntryReason === null
-          ? `Recording leave after the fact is allowed within the window ${typeName} sets, and `
-          : `That is further back than ${typeName} allows, so HR put it on the record as an ` +
-            `exception: “${lateEntryReason}”. What it means here is that `) +
+          ? `Leave can be recorded after the fact, and `
+          : `Whoever entered it said why it is late: “${lateEntryReason}”. What it means ` +
+            `here is that `) +
         `the days have been taken whatever is decided. FR 18.`,
     });
   }

@@ -183,16 +183,11 @@ export function rulesFor(type: LeaveType): FormRule[] {
     });
   }
 
-  /* FR 18. The other window, and the asymmetry is the SRS's: this one refuses. The escape
-     hatch is named because the person who hits it cannot use it themselves. */
+  /* FR 18. No backdating window is enforced: leave can be entered any time after the fact. */
   rules.push({
     kind: 'BACKDATING',
-    inWords:
-      type.maxBackdateCalendarDays > 0
-        ? `Leave that has already started can be entered up to ${days(type.maxBackdateCalendarDays)} ` +
-          `after the fact. Further back than that, only HR can put it on the record, with a reason.`
-        : `This cannot be entered once it has started. Ask HR to put it on the record.`,
-    asks: true,
+    inWords: `Leave that has already happened can be entered at any time after the fact.`,
+    asks: false,
   });
 
   /* FR 10. Only where it asks, by the same argument documentation makes: a list saying a

@@ -648,14 +648,8 @@ describe('when a rule says no', () => {
     expect(asked.status).toBe(201);
   });
 
-  /**
-   * FR 18. And the other window, which refuses rather than asking.
-   *
-   * A 409 for the person whose leave it is, because nothing they retype fixes it — the state
-   * of the world is that the days are further back than the type allows, and the fix is a
-   * different person. A 400 for HR, because what is missing is part of what they sent.
-   */
-  it('refuses leave from further back than the window, and answers HR differently', async () => {
+  /* FR 18. No backdating window is enforced, and either door takes an optional reason. */
+  it('takes leave from any time back, with or without a late-entry reason', async () => {
     await admin.query('UPDATE leave_type SET max_backdate_calendar_days = 7 WHERE id = $1', [
       annualId,
     ]);
@@ -669,26 +663,25 @@ describe('when a rule says no', () => {
       acknowledgesShortNotice: true,
     };
 
-    const refused = await post('/api/me/requests', people.officer, body);
+    const why = 'She was in hospital that week and is only back today';
 
-    expect(refused.status).toBe(409);
+    const own = await post('/api/me/requests', people.officer, { ...body, lateEntryReason: why });
 
-    const problem = (await refused.json()) as { error: string; message: string };
+    expect(own.status).toBe(201);
 
-    expect(problem.error).toBe('TooLateToRecord');
-    expect(problem.message).toMatch(/Ask HR/);
+    const { requestId } = (await own.json()) as { requestId: string };
+    const { rows } = await admin.query<{ late_entry_reason: string }>(
+      'SELECT late_entry_reason FROM leave_request WHERE id = $1',
+      [requestId],
+    );
 
-    /* FR 18. HR's door, which is the only one that can name somebody else. */
-    const asked = await post('/api/requests', people.hrOfficer, body);
+    expect(rows[0].late_entry_reason).toBe(why);
 
-    expect(asked.status).toBe(400);
-    expect((await asked.json()) as { error: string }).toMatchObject({
-      error: 'LateEntryNeedsAReason',
-    });
-
+    /* HR's door, which can name somebody else. A different period, so the two do not overlap. */
     const entered = await post('/api/requests', people.hrOfficer, {
       ...body,
-      lateEntryReason: 'She was in hospital that week and is only back today',
+      from: daysFromToday(-34),
+      to: daysFromToday(-30),
     });
 
     expect(entered.status).toBe(201);

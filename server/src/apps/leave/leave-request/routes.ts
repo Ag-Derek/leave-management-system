@@ -674,7 +674,7 @@ export function requestRoutes({
         reason: asString(sent.reason),
         /** FR 17. */
         acknowledgesShortNotice: asAcknowledgement(sent.acknowledgesShortNotice),
-        /** FR 18. Refused unless the person holds an HR role. */
+        /** FR 18. Optional, kept only for leave already started. */
         lateEntryReason: asString(sent.lateEntryReason),
         /** FR 13, FR 32a. Ids from `POST /me/evidence`, not files. */
         evidence: asIds(sent.evidence),

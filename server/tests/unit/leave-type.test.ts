@@ -18,7 +18,6 @@ import {
   type NewLeaveType,
   NotEligibleForLeaveType,
   noticeShortfall,
-  TooLateToRecord,
   validateLeaveTypeChanges,
   validateNewLeaveType,
 } from '../../src/apps/leave/leave-type/leave-type.js';
@@ -339,11 +338,11 @@ describe('the two windows', () => {
     expect(noticeShortfall(stored(), 0)).toBe(0);
   });
 
-  /* FR 18, and this one does refuse: beyond the window "only HR may enter the
-     record, with a reason". */
-  it('refuse backdating past the window, and permit it up to it', () => {
+  /* FR 18. No backdating window is enforced: leave may be entered any time after the fact. */
+  it('permit backdating any number of days', () => {
     expect(() => assertWithinBackdatingWindow(annual, -7)).not.toThrow();
-    expect(() => assertWithinBackdatingWindow(annual, -8)).toThrow(TooLateToRecord);
+    expect(() => assertWithinBackdatingWindow(annual, -8)).not.toThrow();
+    expect(() => assertWithinBackdatingWindow(annual, -365)).not.toThrow();
   });
 
   it('treat a request made on the day as notice of none, not as backdating', () => {
@@ -357,18 +356,6 @@ describe('the two windows', () => {
       expect(isBeyondTheBackdatingWindow(annual, notice), `${notice} days`).toBe(
         threw(() => assertWithinBackdatingWindow(annual, notice)),
       );
-    }
-  });
-
-  /* The person who hits this cannot use the exemption themselves, so the message
-     has to name who can. NFR USA 03: say what to do, not only what is wrong. */
-  it('name HR in the refusal, because HR is the way past it', () => {
-    try {
-      assertWithinBackdatingWindow(annual, -30);
-    } catch (error) {
-      expect((error as TooLateToRecord).permitted).toBe(7);
-      expect((error as TooLateToRecord).daysAgo).toBe(30);
-      expect((error as Error).message).toMatch(/Ask HR/);
     }
   });
 

@@ -36,10 +36,8 @@ import {
   type CountingBasis,
   countingBasisInWords,
   documentationRequired,
-  isBeyondTheBackdatingWindow,
   type LeaveType,
   noticeShortfall,
-  TooLateToRecord,
 } from '../leave-type/leave-type.js';
 import type { LeaveYear } from '../leave-year/leave-year.js';
 import {
@@ -1253,10 +1251,9 @@ export interface NewLeaveRequest {
    */
   acknowledgesShortNotice?: boolean;
   /**
-   * FR 18. Why this is going on the record past the type's backdating window.
+   * FR 18. Why leave already started is being entered now. Optional, from anyone.
    *
-   * Ignored on a request inside the window, which needs no exception and so has none to
-   * explain. Only HR may enter one at all — see {@link lateEntryFor}.
+   * Ignored on leave not yet started. See {@link lateEntryFor}.
    */
   lateEntryReason?: string;
   /**
@@ -2173,45 +2170,20 @@ export function assertShortNoticeIsAcknowledged(
 }
 
 /**
- * FR 18. Whether leave already begun may be entered this late, and what goes on the record.
+ * FR 18. The late-entry reason to store, if any.
  *
- * The story's three criteria in one function. Inside the window it answers null and nobody is
- * asked anything: recording an absence on the Monday you come back is the ordinary case.
- * Past it the window stops being a rule about the type and becomes a rule about who is
- * entering it — {@link isBeyondTheBackdatingWindow} is the plain question for exactly that
- * reason — so the employee meets {@link TooLateToRecord}, which names HR, and HR meets
- * {@link LateEntryNeedsAReason} until they have written one.
- *
- * The reason is returned rather than merely required, so that the sentence stored is the one
- * this checked. `mayRecordLate` is the policy's answer brought in, as `reasonRequired` is the
- * type's: `/domain` names the standing and never the roles that satisfy it.
+ * No window is enforced, so nobody is refused. Whoever enters leave that has already started
+ * may say why; the trimmed reason is kept, and blank is null. Leave not yet started has no
+ * lateness to explain, so a reason sent with it is dropped.
  */
-export function lateEntryFor(input: {
-  type: LeaveType;
-  period: LeavePeriod;
-  daysOfNotice: number;
-  mayRecordLate: boolean;
-  reason?: string;
-}): string | null {
-  const { type, period, daysOfNotice, mayRecordLate } = input;
-
-  if (!isBeyondTheBackdatingWindow(type, daysOfNotice)) {
+export function lateEntryFor(input: { daysOfNotice: number; reason?: string }): string | null {
+  if (input.daysOfNotice >= 0) {
     return null;
-  }
-
-  const daysAgo = -daysOfNotice;
-
-  if (!mayRecordLate) {
-    throw new TooLateToRecord(type, daysAgo);
   }
 
   const said = typeof input.reason === 'string' ? input.reason.trim() : '';
 
-  if (said === '') {
-    throw new LateEntryNeedsAReason(type, period, daysAgo);
-  }
-
-  return said;
+  return said === '' ? null : said;
 }
 
 /**

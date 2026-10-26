@@ -387,9 +387,7 @@ export class LeaveRequestService {
    * {@link NotEligibleForTheType} for a type that may not be asked for,
    * {@link LeaveCrossesAYearEnd} for a period spanning a year end,
    * {@link LeaveOverlapsAnother} for leave over leave already booked,
-   * {@link LeaveYearIsClosed} for a settled year, {@link TooLateToRecord} and
-   * {@link LateEntryNeedsAReason} for leave dated further back than the type's window,
-   * and {@link NotEnoughDays} where the
+   * {@link LeaveYearIsClosed} for a settled year, and {@link NotEnoughDays} where the
    * balance does not hold what is being asked for — or {@link BalanceOverdrawn} from the
    * door instead, in the one case this method's check cannot cover: a balance spent
    * between the read here and the lock there. Same refusal, and the difference is only
@@ -501,15 +499,8 @@ export class LeaveRequestService {
       input.acknowledgesShortNotice === true,
     );
 
-    /* FR 18. Recording an absence on the way back in is ordinary and answers null;
-       past the window it is HR's to enter, with a reason. */
-    const lateEntryReason = lateEntryFor({
-      type,
-      period,
-      daysOfNotice,
-      mayRecordLate: this.guard.permits(leaveRequestPolicy.recordLate(actor, ownerOf(employee))),
-      reason: input.lateEntryReason,
-    });
+    /* FR 18. Anyone may say why leave already started is entered now. */
+    const lateEntryReason = lateEntryFor({ daysOfNotice, reason: input.lateEntryReason });
 
     /* Counted again, inside no transaction yet but from the same facts, and it is this
        answer that is stored. See the module note for why it is not the caller's. */

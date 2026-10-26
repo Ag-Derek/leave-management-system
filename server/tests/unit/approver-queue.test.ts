@@ -304,20 +304,13 @@ describe('what is flagged', () => {
     expect(item.backdatedBy).toBe(3);
     expect(item.warnings.map((one) => one.code)).toEqual(['BACKDATED', 'SHORT_NOTICE']);
     expect(item.warnings[0].inWords).toContain('already started');
-    /* Inside the window, so it is the ordinary way an absence gets recorded rather than an
-       exception, and the flag says so. FR 18. */
+    /* No reason given, so the flag only says it may be recorded late. FR 18. */
     expect(item.lateEntryReason).toBeNull();
-    expect(item.warnings[0].inWords).toContain('allowed within the window');
+    expect(item.warnings[0].inWords).toContain('can be recorded after the fact');
   });
 
-  /**
-   * FR 18. The story's second criterion, on the request only HR could have entered.
-   *
-   * Two different pieces of news under one flag, and the second is the one an approver weighs:
-   * somebody made an exception, and the sentence they wrote is what says whether it was a good
-   * one. So it is in the flag rather than only on the record.
-   */
-  it('and says why, on one HR entered past the window', () => {
+  /* FR 18. Where whoever entered it said why, the approver reads it in the flag. */
+  it('and says why, where a late-entry reason was given', () => {
     const [item] = queueOf({
       requests: [
         request({
@@ -330,7 +323,7 @@ describe('what is flagged', () => {
     }).items;
 
     expect(item.warnings[0].code).toBe('BACKDATED');
-    expect(item.warnings[0].inWords).toContain('further back than');
+    expect(item.warnings[0].inWords).toContain('said why it is late');
     expect(item.warnings[0].inWords).toContain('Hospitalised the whole of that week');
   });
 
