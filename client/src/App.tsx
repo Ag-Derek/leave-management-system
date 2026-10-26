@@ -30,6 +30,7 @@ import { LeaveTypesPage } from './features/config/LeaveTypesPage';
 import { PolicySettingsPage } from './features/config/PolicySettingsPage';
 import { StaffLeavePage } from './features/config/StaffLeavePage';
 import { MyPlansPage } from './features/plans/MyPlansPage';
+import { PortalHome } from './features/portal/PortalHome';
 import { NewRequestPage } from './features/requests/NewRequestPage';
 import { RequestsPage } from './features/requests/RequestsPage';
 import { ReportsPage } from './features/reports/ReportsPage';
@@ -76,7 +77,8 @@ const MAIN_SCREENS = [
 const HR_HUB = { id: 'hr', label: 'HR settings', icon: 'settings' } as const;
 
 type MainScreen = (typeof MAIN_SCREENS)[number]['id'];
-type Screen = MainScreen | typeof HR_HUB.id | HrSectionId;
+/** The portal's front page, at `#/`, outside Rota's shell. */
+type Screen = 'home' | MainScreen | typeof HR_HUB.id | HrSectionId;
 
 const HR_SECTIONS = HR_GROUPS.flatMap((group) => group.sections);
 
@@ -93,7 +95,11 @@ const LABELS = new Map<string, string>([
 /** The screens a leave year decides the contents of, and so the ones the picker appears on. */
 const YEAR_SCOPED = new Set<Screen>(['balances', 'calendar']);
 
-const DEFAULT_SCREEN: Screen = 'balances';
+/** Where signing in lands, and where an unknown address falls back to. */
+const DEFAULT_SCREEN: Screen = 'home';
+
+/** Rota's first screen, which the portal's Rota card opens. */
+const ROTA_HOME: Screen = 'balances';
 
 /** The hub stays lit while you are on one of its sections. */
 function isHrSection(screen: Screen): boolean {
@@ -163,6 +169,8 @@ export function App() {
 
   /** Signing out on purpose. Nothing went wrong, so nothing is said. */
   const forget = useCallback(() => {
+    // The next sign in starts at the portal, not wherever this person was.
+    window.location.replace('#/');
     setMe(undefined);
     setSections([]);
     setEnded(undefined);
@@ -211,6 +219,10 @@ export function App() {
       ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [screen, me]);
 
+  useEffect(() => {
+    document.title = screen === 'home' ? 'Remat Portal' : 'Rota';
+  }, [screen]);
+
   if (!asked) {
     return null;
   }
@@ -225,6 +237,18 @@ export function App() {
     return <ChangePassword onChanged={ask} />;
   }
 
+  if (screen === 'home') {
+    return (
+      <PortalHome
+        me={me}
+        initials={initialsOf(me)}
+        onSignOut={() => {
+          void signOut().finally(forget);
+        }}
+      />
+    );
+  }
+
   /* Every tab the server said this person may reach: the four everybody has, "Waiting on me"
      for whoever staffs a desk, and the hub for whoever has a card in it. */
   const tabs = [
@@ -237,8 +261,8 @@ export function App() {
       {/* The company rail: the wordmark, the screens, and the company line. */}
       <header className="sidebar">
         {/* The mark and the name are one image, so the name is in `alt` rather than in text
-            beside it — without it this link would have nothing to announce itself by. */}
-        <a className="logo" href={`#/${DEFAULT_SCREEN}`}>
+            beside it. Leads back to the portal. */}
+        <a className="logo" href="#/" aria-label="Rota, back to Remat Portal">
           <img className="logo-lockup" src="/rota-wordmark.png" alt="Rota" />
         </a>
 
@@ -277,7 +301,7 @@ export function App() {
               </a>
             ) : null}
 
-            <h1>{LABELS.get(screen) ?? LABELS.get(DEFAULT_SCREEN)}</h1>
+            <h1>{LABELS.get(screen) ?? LABELS.get(ROTA_HOME)}</h1>
 
             {/* Only on the screens it means something on: a picker over "Ask for
                 leave" would be a control that changes nothing. */}
@@ -407,5 +431,6 @@ function screenInTheAddress(): Screen {
   // A screen may carry a query, as `#/ask?leaveTypeId=…` does; the screen is before it.
   const named = window.location.hash.replace(/^#\/?/, '').split('?')[0] ?? '';
 
+  // `#/`, an empty hash and anything unknown all land on the portal.
   return LABELS.has(named) ? (named as Screen) : DEFAULT_SCREEN;
 }
