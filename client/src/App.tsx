@@ -29,6 +29,7 @@ import { LeaversPage } from './features/config/LeaversPage';
 import { LeaveTypesPage } from './features/config/LeaveTypesPage';
 import { PolicySettingsPage } from './features/config/PolicySettingsPage';
 import { StaffLeavePage } from './features/config/StaffLeavePage';
+import { DirectoryPage } from './features/directory/DirectoryPage';
 import { MyPlansPage } from './features/plans/MyPlansPage';
 import { PortalHome } from './features/portal/PortalHome';
 import { NewRequestPage } from './features/requests/NewRequestPage';
@@ -77,8 +78,11 @@ const MAIN_SCREENS = [
 const HR_HUB = { id: 'hr', label: 'HR settings', icon: 'settings' } as const;
 
 type MainScreen = (typeof MAIN_SCREENS)[number]['id'];
-/** The portal's front page, at `#/`, outside Rota's shell. */
-type Screen = 'home' | MainScreen | typeof HR_HUB.id | HrSectionId;
+/**
+ * The portal's front page, at `#/`, and the directory, at `#/directory` and
+ * `#/directory/<id>`, both outside Rota's shell.
+ */
+type Screen = 'home' | 'directory' | MainScreen | typeof HR_HUB.id | HrSectionId;
 
 const HR_SECTIONS = HR_GROUPS.flatMap((group) => group.sections);
 
@@ -97,6 +101,13 @@ const YEAR_SCOPED = new Set<Screen>(['balances', 'calendar']);
 
 /** Where signing in lands, and where an unknown address falls back to. */
 const DEFAULT_SCREEN: Screen = 'home';
+
+/**
+ * The directory is still being built: it opens under `npm run web` and nowhere else. In a
+ * build its card says "Coming soon" and its address falls back to the portal. The server
+ * leaves its route unmounted in production for the same reason.
+ */
+const DIRECTORY_OPEN = import.meta.env.DEV;
 
 /** Rota's first screen, which the portal's Rota card opens. */
 const ROTA_HOME: Screen = 'balances';
@@ -220,7 +231,8 @@ export function App() {
   }, [screen, me]);
 
   useEffect(() => {
-    document.title = screen === 'home' ? 'Remat Portal' : 'Rota';
+    document.title =
+      screen === 'home' ? 'Remat Portal' : screen === 'directory' ? 'Directory' : 'Rota';
   }, [screen]);
 
   if (!asked) {
@@ -242,9 +254,23 @@ export function App() {
       <PortalHome
         me={me}
         initials={initialsOf(me)}
+        directoryOpen={DIRECTORY_OPEN}
         onSignOut={() => {
           void signOut().finally(forget);
         }}
+      />
+    );
+  }
+
+  if (screen === 'directory') {
+    return (
+      <DirectoryPage
+        me={me}
+        initials={initialsOf(me)}
+        onSignOut={() => {
+          void signOut().finally(forget);
+        }}
+        onSignedOut={ranOut}
       />
     );
   }
@@ -260,11 +286,18 @@ export function App() {
     <div className="shell">
       {/* The company rail: the wordmark, the screens, and the company line. */}
       <header className="sidebar">
-        {/* The mark and the name are one image, so the name is in `alt` rather than in text
-            beside it. Leads back to the portal. */}
-        <a className="logo" href="#/" aria-label="Rota, back to Remat Portal">
-          <img className="logo-lockup" src="/rota-wordmark.png" alt="Rota" />
-        </a>
+        {/* The way back to the portal, beside the app's name, as every app has. The mark and
+            the name are one image, so the name is in `alt` rather than in text beside it; it
+            opens Rota's first screen. */}
+        <div className="app-heading">
+          <a className="back" href="#/" aria-label="Back to Remat Portal">
+            <Icon name="back" />
+          </a>
+
+          <a className="logo" href={`#/${ROTA_HOME}`}>
+            <img className="logo-lockup" src="/rota-wordmark.png" alt="Rota" />
+          </a>
+        </div>
 
         {/* Anchors rather than buttons, which is the whole of what the router buys: a tab
             can be middle clicked, copied, bookmarked and gone back from, and none of that
@@ -430,6 +463,11 @@ function subscribeToTheAddress(changed: () => void): () => void {
 function screenInTheAddress(): Screen {
   // A screen may carry a query, as `#/ask?leaveTypeId=…` does; the screen is before it.
   const named = window.location.hash.replace(/^#\/?/, '').split('?')[0] ?? '';
+
+  // The directory carries the person after a slash; which one is the page's to read.
+  if (DIRECTORY_OPEN && (named === 'directory' || named.startsWith('directory/'))) {
+    return 'directory';
+  }
 
   // `#/`, an empty hash and anything unknown all land on the portal.
   return LABELS.has(named) ? (named as Screen) : DEFAULT_SCREEN;

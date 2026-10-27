@@ -108,6 +108,11 @@
   --go: #1e8e3e;
   --go-ink: #14672c;
 
+  /* Away today, in the directory. Amber for the reason `--go` is green: it is told apart from
+     "in" at a glance, and the words beside it say which. */
+  --away: #e8a200;
+  --away-ink: #7a5200;
+
   /* Leave that has been agreed. Still derived from the accent rather than being a green: the
      brand has two blues and no green, and the tag beside it says the word. */
   --agreed: color-mix(in srgb, var(--brand-blue) 88%, var(--brand-black));
@@ -174,6 +179,7 @@
     --left: #232830;
     --warn: #f2b8b5;
     --go-ink: #6ddb8e;
+    --away-ink: #ffd27a;
 
     /* Lightened rather than darkened, because it is read against `--card` and the light
        theme's mix would fail contrast there. */
@@ -327,6 +333,381 @@ a.portal-app:hover {
   height: 2.75rem;
 }
 
+/* ------------------------------------------------------------ the directory */
+
+.directory-filters {
+  align-items: center;
+  margin-bottom: var(--gap);
+}
+
+.directory-filters > label:not(.filter-search) {
+  flex: 0 1 14rem;
+}
+
+/* The page's first line: the way back to the portal, the app's name, and who is signed in
+   on the right. */
+.directory-head {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin-bottom: var(--gap-lg);
+}
+
+.portal-page .directory-head h1 {
+  min-width: 0;
+  margin: 0 auto 0 -0.5rem;
+}
+
+.directory-head .back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-left: -0.5rem;
+  border-radius: var(--radius-small);
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.directory-head .back:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.directory-head .back svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.directory-head .linkish {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.directory-head .linkish:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+@media (max-width: 34rem) {
+  .directory-head .whoami-name {
+    display: none;
+  }
+}
+
+.directory-card {
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.directory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.directory-table thead th {
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--ink) 2%, var(--card));
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.directory-table td {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.directory-table tbody tr {
+  cursor: pointer;
+}
+
+.directory-table tbody tr:hover {
+  background: color-mix(in srgb, var(--ink) 3%, var(--card));
+}
+
+.directory-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.directory-person {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.directory-person > span {
+  min-width: 0;
+}
+
+.directory-person a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.directory-person a:hover {
+  text-decoration: underline;
+}
+
+.directory-person small {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.directory-department {
+  color: var(--ink-soft);
+}
+
+.directory-email a {
+  color: var(--accent);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.directory-email a:hover {
+  text-decoration: underline;
+}
+
+.directory .avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--brand-white);
+}
+
+/* Each dark enough to carry white initials on either ground. */
+.avatar.tone-0 {
+  background: var(--who-0);
+}
+.avatar.tone-1 {
+  background: var(--who-2);
+}
+.avatar.tone-2 {
+  background: var(--who-5);
+}
+.avatar.tone-3 {
+  background: var(--who-6);
+}
+.avatar.tone-4 {
+  background: var(--who-7);
+}
+.avatar.tone-5 {
+  background: var(--who-8);
+}
+
+/* In: a green dot and the word. */
+.presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink-soft);
+}
+
+.presence::before,
+.tag.is-away::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--go);
+}
+
+.tag.is-away {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.7rem;
+  color: var(--away-ink);
+  background: color-mix(in srgb, var(--away) 16%, var(--card));
+}
+
+.tag.is-away::before {
+  background: var(--away);
+}
+
+.directory-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.directory-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.directory-placeholder:last-child {
+  border-bottom: none;
+}
+
+.skeleton.is-avatar,
+.skeleton.is-line {
+  display: block;
+}
+
+.skeleton.is-avatar {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+}
+
+.skeleton.is-line {
+  width: min(16rem, 60%);
+  height: 0.9rem;
+  border-radius: 4px;
+}
+
+/* One person. */
+.directory-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: var(--gap);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.directory-back svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.directory-profile {
+  max-width: 40rem;
+  padding: var(--gap-lg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.directory-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: var(--gap-lg);
+}
+
+.directory-profile-head h2 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.directory-profile-head .muted {
+  margin: 0;
+}
+
+.directory .directory-profile-head .avatar {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.25rem;
+}
+
+.directory-profile dl {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.directory-profile dl > div {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: var(--gap);
+}
+
+.directory-profile dt {
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+}
+
+.directory-profile dd {
+  margin: 0;
+}
+
+.directory-profile dd a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+/* A phone: each person a short card rather than a row four columns wide. The email and the
+   department sit under the name, in line with it rather than with the circle. */
+@media (max-width: 46rem) {
+  .directory-table thead {
+    display: none;
+  }
+
+  .directory-table,
+  .directory-table tbody {
+    display: block;
+  }
+
+  .directory-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'person today'
+      'department department'
+      'email email';
+    gap: 0.2rem 0.75rem;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .directory-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .directory-table td {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+
+  .directory-table td.directory-person {
+    display: flex;
+    grid-area: person;
+  }
+
+  .directory-table td.directory-today {
+    grid-area: today;
+    align-self: start;
+  }
+
+  .directory-table td.directory-department {
+    grid-area: department;
+    padding-left: 3.25rem;
+  }
+
+  .directory-table td.directory-email {
+    grid-area: email;
+    padding-left: 3.25rem;
+  }
+
+  .directory-profile dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.1rem;
+  }
+}
+
 /* ------------------------------------------------------------ the shell */
 
 /* A dark rail down the side, in the brand black, and the work beside it. Grid
@@ -366,6 +747,35 @@ a.portal-app:hover {
   flex: none;
   width: auto;
   height: 2rem;
+}
+
+/* The way back to the portal, left of the wordmark. */
+.app-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: -0.5rem;
+}
+
+.sidebar .back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-small);
+  color: var(--rail-ink-soft);
+  text-decoration: none;
+}
+
+.sidebar .back:hover {
+  background: color-mix(in srgb, var(--brand-white) 10%, transparent);
+  color: var(--rail-ink);
+}
+
+.sidebar .back svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* The company line, at the foot of the rail. `margin-top: auto` puts it there whatever the

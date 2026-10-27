@@ -83,6 +83,23 @@ export function dayAfter(iso: string): string {
   return next.toISOString().slice(0, 10);
 }
 
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * A day this week or next, as somebody says it: `Mon 26 Oct`.
+ *
+ * No year, because it is for a date close enough that the year goes without saying. The
+ * weekday is worked in UTC, as {@link dayAfter} is, so no zone can move it.
+ */
+export function weekday(iso: string): string {
+  const [year, month, dayOfMonth] = iso.split('-').map(Number);
+  const named = WEEKDAYS[new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay()];
+
+  return named === undefined || MONTHS[month - 1] === undefined
+    ? day(iso)
+    : `${named} ${String(dayOfMonth)} ${MONTHS[month - 1]}`;
+}
+
 /**
  * Two of them as one period, with whatever they share said once.
  *

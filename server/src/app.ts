@@ -71,6 +71,10 @@ import type { LeavePlanRepository } from './apps/leave/plan/plan.db.js';
 import { LeavePlanService } from './apps/leave/plan/plan.service.js';
 import { planRoutes } from './apps/leave/plan/routes.js';
 import { TeamCalendarService } from './apps/leave/team/team-calendar.service.js';
+import { AwayTodayService } from './apps/leave/team/away-today.service.js';
+import { DirectoryService } from './apps/directory/directory.service.js';
+import { directoryRoutes } from './apps/directory/routes.js';
+import type { WorkPatternRepository } from './core/calendar/work-pattern/work-pattern.db.js';
 import { identify, insistOnANewPassword } from './core/http/identify.js';
 import { answerProblems, type FailureLog } from './core/http/problems.js';
 import { requestRoutes } from './apps/leave/leave-request/routes.js';
@@ -102,6 +106,11 @@ export interface Application {
   entitlementRules: EntitlementRuleRepository;
   /** FR 22. The gazetted days the office is closed. */
   holidays: HolidayRepository;
+  /**
+   * FR 23. Which days each person works, so the directory can say when somebody is back.
+   * Optional, so a test app without it marks nobody away in the directory.
+   */
+  patterns?: WorkPatternRepository;
   /**
    * FR 25, §8.8. Crediting a late-declared holiday back into leave people had.
    *
@@ -416,6 +425,27 @@ export function buildApp(parts: Application): Express {
       ),
     }),
   );
+
+  /* The staff directory, every employee's. Who is away comes from leave through the
+     directory's own port, so neither app imports the other; only a return date crosses.
+
+     Still being built, so not mounted in production: `/api/directory` answers 404 there
+     until it is finished. The client hides the screen on the same terms. */
+  if (process.env.NODE_ENV !== 'production') {
+    app.use(
+      '/api',
+      directoryRoutes({
+        directory: new DirectoryService(
+          parts.guard,
+          parts.employees,
+          parts.departments,
+          parts.patterns === undefined
+            ? undefined
+            : new AwayTodayService(parts.requests, parts.employees, parts.patterns, parts.holidays),
+        ),
+      }),
+    );
+  }
 
   if (parts.planning !== undefined) {
     app.use(
