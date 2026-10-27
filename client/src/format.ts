@@ -83,6 +83,28 @@ export function dayAfter(iso: string): string {
   return next.toISOString().slice(0, 10);
 }
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** A month and its year, `August 2023`, read off the ten characters as {@link day} is. */
+export function monthAndYear(iso: string): string {
+  const month = MONTH_NAMES[Number(iso.slice(5, 7)) - 1];
+
+  return month === undefined ? iso : `${month} ${iso.slice(0, 4)}`;
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**

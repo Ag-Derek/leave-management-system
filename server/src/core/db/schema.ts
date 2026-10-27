@@ -22,6 +22,9 @@ export interface EmployeeTable {
   employment_type: Generated<string>;
   employment_status: Generated<string>;
   gender: string | null;
+  /** Kept by the person themselves; everything above is HR's. */
+  work_mobile: Generated<string | null>;
+  description: Generated<string | null>;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

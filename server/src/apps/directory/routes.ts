@@ -2,7 +2,12 @@
 
 import { type Request, type Response, Router } from 'express';
 import { actorOf } from '../../core/http/identify.js';
-import type { DepartmentInTheDirectory, Directory, DirectoryEntry } from './directory.js';
+import type {
+  DepartmentInTheDirectory,
+  Directory,
+  DirectoryEntry,
+  MyProfile,
+} from './directory.js';
 import type { DirectoryService } from './directory.service.js';
 
 export interface DirectoryRoutes {
@@ -22,7 +27,53 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
       .catch(next);
   });
 
+  /** My own profile, with the HR-kept facts only I am shown. `/me` names the reader. */
+  routes.get('/me/profile', (_request: Request, response: Response, next) => {
+    void directory
+      .mine(actorOf(response))
+      .then((mine) => {
+        response.json(profileAsJson(mine));
+      })
+      .catch(next);
+  });
+
+  /**
+   * Changing the self-service fields on a record. Only its owner may, and anybody else is
+   * answered 403 and logged; the id is in the path so that the refusal has something to
+   * refuse. The body is passed on whole for the service to check, so a field HR keeps is
+   * named in the refusal rather than dropped on the floor here.
+   */
+  routes.patch(
+    '/people/:employeeId/profile',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void directory
+        .editProfile(actorOf(response), request.params.employeeId, request.body)
+        .then((mine) => {
+          response.json(profileAsJson(mine));
+        })
+        .catch(next);
+    },
+  );
+
   return routes;
+}
+
+/** Somebody's own profile. Only ever sent to the person it is. */
+function profileAsJson(mine: MyProfile): unknown {
+  return {
+    ...(entryAsJson(mine) as object),
+    /** Ten characters. NFR DAT 03. */
+    startDate: mine.startDate,
+    manager:
+      mine.manager === null
+        ? null
+        : {
+            employeeId: mine.manager.employeeId,
+            firstName: mine.manager.firstName,
+            lastName: mine.manager.lastName,
+            jobTitle: mine.manager.jobTitle,
+          },
+  };
 }
 
 /**
@@ -49,6 +100,9 @@ function entryAsJson(entry: DirectoryEntry): unknown {
     workEmail: entry.workEmail,
     /** Ten characters, or null where they are in. NFR DAT 03. */
     backOn: entry.backOn,
+    /** What they keep themselves. Null where they have said nothing. */
+    workMobile: entry.workMobile,
+    description: entry.description,
   };
 }
 

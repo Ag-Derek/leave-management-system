@@ -69,6 +69,25 @@ export interface Employee {
   updatedAt: Date;
 }
 
+/**
+ * What a person keeps on their own record. Everything else on it is HR's.
+ *
+ * Apart from {@link Employee} because they are a different kind of fact: nothing routes on
+ * them, nothing is calculated from them, and the person changes them without asking anybody.
+ * A photo is the third, and is not stored yet.
+ */
+export interface EmployeeProfile {
+  employeeId: string;
+  workMobile: string | null;
+  description: string | null;
+}
+
+/** A change to those, checked. An absent field is left as it is; null clears it. */
+export interface ProfileChanges {
+  workMobile?: string | null;
+  description?: string | null;
+}
+
 /** A record that was refused, and the field that caused it. */
 export class InvalidEmployee extends Error {
   readonly field: string;

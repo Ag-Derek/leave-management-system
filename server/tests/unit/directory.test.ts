@@ -4,6 +4,13 @@ import type { Department } from '../../src/core/organisation/department/departme
 import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import { directoryFor, isCurrentOn } from '../../src/apps/directory/directory.js';
 import { directoryPolicy } from '../../src/apps/directory/policy.js';
+import {
+  DESCRIPTION_LIMIT,
+  descriptionFrom,
+  InvalidProfile,
+  validateProfileEdit,
+  workMobileFrom,
+} from '../../src/apps/directory/profile.js';
 import { firstDayBack } from '../../src/apps/leave/team/away-today.js';
 
 /** The staff directory, as rules. */
@@ -58,6 +65,7 @@ describe('the directory', () => {
     employees: everybody,
     departments: [OPERATIONS, FINANCE, department('empty', 'Nobody here')],
     away: [{ employeeId: 'akosua', backOn: '2026-11-02' }],
+    profiles: [{ employeeId: 'kofi', workMobile: '024 555 0197', description: 'Tenders.' }],
     today: TODAY,
   });
 
@@ -90,16 +98,110 @@ describe('the directory', () => {
     expect(directory.departments.map((one) => one.name)).toEqual(['Finance', 'Operations']);
   });
 
+  it('shows what each person keeps themselves, and nothing for somebody who said nothing', () => {
+    const kofi = directory.people.find((one) => one.employeeId === 'kofi');
+    const yaw = directory.people.find((one) => one.employeeId === 'yaw');
+
+    expect(kofi?.workMobile).toBe('024 555 0197');
+    expect(kofi?.description).toBe('Tenders.');
+    expect(yaw?.workMobile).toBeNull();
+    expect(yaw?.description).toBeNull();
+  });
+
   it('carries nothing from the record but what the directory shows', () => {
     expect(Object.keys(directory.people[0]).sort()).toEqual([
       'backOn',
       'department',
+      'description',
       'employeeId',
       'firstName',
       'jobTitle',
       'lastName',
       'workEmail',
+      'workMobile',
     ]);
+  });
+});
+
+describe('changing your own profile', () => {
+  it('accepts a work mobile and a description', () => {
+    expect(
+      validateProfileEdit({ workMobile: ' 024  555 0197 ', description: '  Tenders.  ' }),
+    ).toEqual({ workMobile: '024 555 0197', description: 'Tenders.' });
+  });
+
+  it('clears either one when it is sent empty or null', () => {
+    expect(validateProfileEdit({ workMobile: '', description: null })).toEqual({
+      workMobile: null,
+      description: null,
+    });
+  });
+
+  it('leaves out what was not sent', () => {
+    expect(validateProfileEdit({ description: 'Tenders.' })).toEqual({ description: 'Tenders.' });
+  });
+
+  it('refuses any field HR keeps, naming it', () => {
+    expect(() => validateProfileEdit({ jobTitle: 'Chief Executive Officer' })).toThrow(
+      expect.objectContaining({ name: 'InvalidProfile', field: 'jobTitle' }),
+    );
+    expect(() => validateProfileEdit({ description: 'Fine', managerId: '1' })).toThrow(
+      /managerId is kept by HR/,
+    );
+  });
+
+  it('knows the photo is one of the three, and says changing it is not available yet', () => {
+    expect(() => validateProfileEdit({ photo: null })).toThrow(
+      expect.objectContaining({
+        field: 'photo',
+        message: expect.stringContaining('not available yet'),
+      }),
+    );
+  });
+
+  it('refuses a body that is not one object', () => {
+    expect(() => validateProfileEdit('Tenders.')).toThrow(InvalidProfile);
+    expect(() => validateProfileEdit([])).toThrow(InvalidProfile);
+  });
+});
+
+describe('a description', () => {
+  it('may be 280 characters', () => {
+    expect(descriptionFrom('a'.repeat(DESCRIPTION_LIMIT))).toHaveLength(280);
+  });
+
+  it('may not be 400, and the refusal names the field, the limit and the length', () => {
+    expect(() => descriptionFrom('a'.repeat(400))).toThrow(
+      'Description must be 280 characters or fewer. It is 400.',
+    );
+  });
+
+  it('counts an emoji as one character, as the screen does', () => {
+    expect(descriptionFrom('🙂'.repeat(DESCRIPTION_LIMIT))).not.toBeNull();
+  });
+
+  it('is nothing when it is only spaces', () => {
+    expect(descriptionFrom('   ')).toBeNull();
+  });
+});
+
+describe('a work mobile', () => {
+  it.each(['0245550197', '024 555 0197', '024-555-0197', '+233 24 555 0197', '+44 20 7946 0958'])(
+    'accepts %s',
+    (number) => {
+      expect(workMobileFrom(number)).toBe(number);
+    },
+  );
+
+  it.each(['12345', '024 555 019', '24 555 0197 1', '+233', 'call me', '024 555 0197 ext 4'])(
+    'refuses %s, naming the field and the shape it wants',
+    (number) => {
+      expect(() => workMobileFrom(number)).toThrow(/^Work mobile must be a phone number/);
+    },
+  );
+
+  it('refuses one longer than the 20 characters the record holds', () => {
+    expect(() => workMobileFrom('+233 (0) 24 555 01 97 00')).toThrow(/20 characters or fewer/);
   });
 });
 
@@ -163,6 +265,33 @@ describe('who may read the directory', () => {
 
   it('and not an actor with nobody behind it', () => {
     expect(directoryPolicy.read(theSystem('a directory unit test')).allowed).toBe(false);
+  });
+});
+
+describe('who may change a profile', () => {
+  const adwoa = signedInAs('adwoa', { roles: ['EMPLOYEE'], isManager: false });
+
+  it('is the person whose record it is', () => {
+    expect(directoryPolicy.editProfile(adwoa, 'adwoa').allowed).toBe(true);
+  });
+
+  it('and nobody else, openly, so the refusal is a 403 that says why', () => {
+    const decision = directoryPolicy.editProfile(adwoa, 'kofi');
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.told).toContain('only change your own profile');
+  });
+
+  it('and not HR either, who keep everything else on the record', () => {
+    const hr = signedInAs('ama', { roles: ['EMPLOYEE', 'HR_ADMIN'], isManager: false });
+
+    expect(directoryPolicy.editProfile(hr, 'adwoa').allowed).toBe(false);
+  });
+
+  it('and not the system, which is nobody', () => {
+    expect(directoryPolicy.editProfile(theSystem('a directory unit test'), 'adwoa').allowed).toBe(
+      false,
+    );
   });
 });
 
