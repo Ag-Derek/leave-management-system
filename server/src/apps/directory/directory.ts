@@ -2,7 +2,7 @@
 
 import type { CalendarDate } from '../../core/calendar/time.js';
 import type { Department } from '../../core/organisation/department/department.js';
-import type { Employee } from '../../core/organisation/employee/employee.js';
+import type { Employee, EmployeeProfile } from '../../core/organisation/employee/employee.js';
 
 /** Somebody on agreed leave today, and the first day they are expected back. */
 export interface AwayToday {
@@ -38,6 +38,26 @@ export interface DirectoryEntry {
   workEmail: string;
   /** The first day they are expected back, where they are on agreed leave today. */
   backOn: CalendarDate | null;
+  /** What they keep themselves, rather than HR. */
+  workMobile: string | null;
+  description: string | null;
+}
+
+/**
+ * Somebody's own profile, as they see it to edit it.
+ *
+ * What everybody sees of them, and the HR-kept facts only they are shown: when they started,
+ * and who they report to. A colleague's manager is not in the directory, so it is not here
+ * for anybody but the person themselves.
+ */
+export interface MyProfile extends DirectoryEntry {
+  startDate: CalendarDate;
+  manager: {
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    jobTitle: string | null;
+  } | null;
 }
 
 export interface Directory {
@@ -54,6 +74,8 @@ export interface DirectoryFacts {
   employees: readonly Employee[];
   departments: readonly Department[];
   away: readonly AwayToday[];
+  /** What each person keeps themselves. Somebody with no row here has said nothing. */
+  profiles: readonly EmployeeProfile[];
   today: CalendarDate;
 }
 
@@ -87,27 +109,47 @@ export function bySurname(
   );
 }
 
+/** One person, as the directory shows them. */
+export function entryFor(
+  employee: Employee,
+  department: Department | undefined,
+  backOn: CalendarDate | undefined,
+  profile: EmployeeProfile | undefined,
+): DirectoryEntry {
+  return {
+    employeeId: employee.id,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    jobTitle: employee.jobTitle,
+    department: {
+      id: employee.departmentId,
+      /* `department_id` is a NOT NULL foreign key, so the lookup always finds one. The
+         fallback is for the type, not for a case that occurs. */
+      name: department?.name ?? 'Unknown department',
+    },
+    workEmail: employee.workEmail,
+    backOn: backOn ?? null,
+    workMobile: profile?.workMobile ?? null,
+    description: profile?.description ?? null,
+  };
+}
+
 /** The directory, from the facts. */
 export function directoryFor(facts: DirectoryFacts): Directory {
   const departments = new Map(facts.departments.map((one) => [one.id, one]));
   const backOn = new Map(facts.away.map((one) => [one.employeeId, one.backOn]));
+  const profiles = new Map(facts.profiles.map((one) => [one.employeeId, one]));
 
   const people = facts.employees
     .filter((employee) => isCurrentOn(employee, facts.today))
-    .map((employee): DirectoryEntry => ({
-      employeeId: employee.id,
-      firstName: employee.firstName,
-      lastName: employee.lastName,
-      jobTitle: employee.jobTitle,
-      department: {
-        id: employee.departmentId,
-        /* `department_id` is a NOT NULL foreign key, so the lookup always finds one. The
-             fallback is for the type, not for a case that occurs. */
-        name: departments.get(employee.departmentId)?.name ?? 'Unknown department',
-      },
-      workEmail: employee.workEmail,
-      backOn: backOn.get(employee.id) ?? null,
-    }))
+    .map((employee) =>
+      entryFor(
+        employee,
+        departments.get(employee.departmentId),
+        backOn.get(employee.id),
+        profiles.get(employee.id),
+      ),
+    )
     .sort(bySurname);
 
   const listed = new Map(people.map((person) => [person.department.id, person.department]));

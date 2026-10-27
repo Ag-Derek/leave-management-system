@@ -2042,6 +2042,42 @@ export interface DirectoryPerson {
   workEmail: string;
   /** The first day they are expected back, where they are on agreed leave today. */
   backOn: string | null;
+  /** What they keep themselves. Null where they have said nothing. */
+  workMobile: string | null;
+  description: string | null;
+}
+
+/** My own profile, with the HR-kept facts only I am shown. */
+export interface MyProfile extends DirectoryPerson {
+  startDate: string;
+  manager: {
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    jobTitle: string | null;
+  } | null;
+}
+
+/** What I may change on my own record. An absent field is left alone; empty clears it. */
+export interface ProfileFields {
+  workMobile?: string;
+  description?: string;
+}
+
+export async function myProfile(): Promise<MyProfile> {
+  return request<MyProfile>('GET', '/api/me/profile');
+}
+
+/** Saves my changes, live at once. The server refuses anybody else's record with a 403. */
+export async function changeMyProfile(
+  employeeId: string,
+  fields: ProfileFields,
+): Promise<MyProfile> {
+  return request<MyProfile>(
+    'PATCH',
+    `/api/people/${encodeURIComponent(employeeId)}/profile`,
+    fields,
+  );
 }
 
 export interface Directory {

@@ -13,6 +13,8 @@ import {
   type EmploymentType,
   type Gender,
   ManagerCycle,
+  type EmployeeProfile,
+  type ProfileChanges,
   type ReportingLines,
   SecondRootEmployee,
   type StorableEmployee,
@@ -200,6 +202,54 @@ export class EmployeeRepository {
       .execute();
 
     return rows.map(toEmployee);
+  }
+
+  /** What these people keep on their own records, in no particular order. */
+  async profilesOf(ids: readonly string[]): Promise<EmployeeProfile[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const rows = await this.db
+      .selectFrom('employee')
+      .select(['id', 'work_mobile', 'description'])
+      .where('id', 'in', [...ids])
+      .execute();
+
+    return rows.map(toProfile);
+  }
+
+  /**
+   * Changes the fields a person keeps themselves, and no others.
+   *
+   * Its own write rather than {@link EmployeeRepository.update}, so that nothing a profile
+   * screen sends can reach a column HR keeps, whatever a caller passes. The audit trigger
+   * records it as it records every change to the row: before, after, who and when.
+   */
+  async updateProfile(
+    by: Attribution,
+    id: string,
+    changes: ProfileChanges,
+  ): Promise<EmployeeProfile | undefined> {
+    const values: { work_mobile?: string | null; description?: string | null } = {};
+
+    if ('workMobile' in changes) values.work_mobile = changes.workMobile ?? null;
+    if ('description' in changes) values.description = changes.description ?? null;
+
+    if (Object.keys(values).length === 0) {
+      return (await this.profilesOf([id]))[0];
+    }
+
+    const row = await recording(this.db, by, (on) =>
+      on
+        .updateTable('employee')
+        .set(values)
+        .where('id', '=', id)
+        .returning(['id', 'work_mobile', 'description'])
+        .executeTakeFirst(),
+    );
+
+    return row === undefined ? undefined : toProfile(row);
   }
 
   /** How many employees report to somebody. FR 02. */
@@ -406,6 +456,15 @@ function toColumns(changes: Partial<ValidatedEmployee>) {
   if ('gender' in changes) values.gender = changes.gender;
 
   return values;
+}
+
+/** The self-service columns. */
+function toProfile(row: {
+  id: string;
+  work_mobile: string | null;
+  description: string | null;
+}): EmployeeProfile {
+  return { employeeId: row.id, workMobile: row.work_mobile, description: row.description };
 }
 
 /**

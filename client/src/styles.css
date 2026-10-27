@@ -380,13 +380,89 @@ a.portal-app:hover {
   height: 1.25rem;
 }
 
-.directory-head .linkish {
+/* Who is signed in, as a button that opens My profile and Sign out under it. */
+.account {
+  position: relative;
+  flex: none;
+}
+
+.account-button {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+}
+
+.account-button:hover:not(:disabled),
+.account-button[aria-expanded='true'] {
+  background: var(--line);
+}
+
+.account-button svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--ink-soft);
+  transition: transform 0.15s;
+}
+
+.account-button[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 20;
+  min-width: 12rem;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  box-shadow: var(--shadow);
+}
+
+.account-menu li + li {
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--line);
+}
+
+.account-menu a,
+.account-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+}
+
+.account-menu a:hover,
+.account-menu button:hover:not(:disabled) {
+  background: var(--line);
+}
+
+.account-menu a[aria-current='page'] {
   color: var(--accent);
   font-weight: 600;
 }
 
-.directory-head .linkish:hover:not(:disabled) {
-  background: var(--accent-soft);
+@media (prefers-reduced-motion: reduce) {
+  .account-button svg {
+    transition: none;
+  }
 }
 
 @media (max-width: 34rem) {
@@ -614,6 +690,192 @@ a.portal-app:hover {
 
 .directory-profile-head .muted {
   margin: 0;
+}
+
+/* Kept as written, line breaks and all. */
+.directory-description {
+  white-space: pre-line;
+}
+
+/* ------------------------------------------------------------ my own profile */
+
+/* Four cards: who I am across the top, and a card each for the three sections under it. */
+.my-profile {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.my-profile.skeleton {
+  display: block;
+  height: 26rem;
+}
+
+.my-profile-head,
+.my-profile-columns section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.my-profile-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-lg);
+  padding: var(--gap-lg) calc(var(--gap-lg) + 0.5rem);
+}
+
+.directory .my-profile-photo .avatar {
+  width: 6.5rem;
+  height: 6.5rem;
+  font-size: 2rem;
+}
+
+.my-profile-who {
+  min-width: 0;
+}
+
+.my-profile-who h2 {
+  font-size: 2.25rem;
+}
+
+.my-profile-who p {
+  margin: 0.35rem 0 0;
+}
+
+.my-profile-role {
+  color: var(--ink-soft);
+  font-size: 1.0625rem;
+}
+
+.my-profile-who .muted {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* The three sections, a card each, the same height side by side. */
+.my-profile-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.my-profile-columns section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0 var(--gap-lg) var(--gap-lg);
+}
+
+/* Each card's title in a band of its own across the top, so the three read as three. */
+.my-profile-columns h3 {
+  margin: 0 calc(var(--gap-lg) * -1);
+  padding: 0.85rem var(--gap-lg);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: color-mix(in srgb, var(--ink) 2%, var(--card));
+  font-family: var(--face-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.my-profile-fact > span,
+.my-profile-field > label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.my-profile-fact > p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.my-profile-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.my-profile-field input,
+.my-profile-field textarea {
+  width: 100%;
+}
+
+/* A fixed height that scrolls, rather than a corner to drag: 280 characters fit in a few
+   lines, and a box that changes size moves the buttons under it. */
+.my-profile-field textarea {
+  resize: none;
+  overflow-y: auto;
+}
+
+.my-profile-field small {
+  margin-top: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+/* A rule broken, said under the box before Save. `aria-invalid` on the box carries it. */
+.my-profile-field small.error {
+  color: var(--warn);
+}
+
+.my-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.my-profile-actions button {
+  min-height: 2.75rem;
+  padding-inline: 1.1rem;
+}
+
+.my-profile-columns .notice {
+  margin: 0;
+}
+
+.my-profile-manager {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.my-profile-manager strong,
+.my-profile-manager small {
+  display: block;
+}
+
+.my-profile-manager small {
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 56rem) {
+  .my-profile-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 40rem) {
+  .my-profile-head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .my-profile-who h2 {
+    font-size: 1.75rem;
+  }
+
+  .directory .my-profile-photo .avatar {
+    width: 5rem;
+    height: 5rem;
+    font-size: 1.5rem;
+  }
 }
 
 .directory .directory-profile-head .avatar {

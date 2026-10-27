@@ -48,6 +48,7 @@ import { AwayTodayService } from '../../src/apps/leave/team/away-today.service.j
 import { DirectoryService } from '../../src/apps/directory/directory.service.js';
 import type { Directory } from '../../src/apps/directory/directory.js';
 import { recordingMailer } from '../support/recording-mailer.js';
+import { recordingDenials } from '../support/recording-denials.js';
 import { seed } from '../../seeds/seed.mjs';
 import { holidayRecalculationService } from '../support/holiday-recalculations.js';
 import { delegationService } from '../support/delegations.js';
@@ -79,6 +80,8 @@ let admin: Client;
 let server: Server;
 let origin: string;
 let guard: Guard;
+/** NFR SEC 03. Every refusal the guard wrote down, for the 403 tests to read back. */
+const denials = recordingDenials();
 let balances: BalanceService;
 let requests: LeaveRequestService;
 let people: Record<string, string>;
@@ -91,7 +94,7 @@ beforeAll(async () => {
   admin = new Client({ connectionString: testDatabaseUrl });
   await admin.connect();
 
-  guard = new Guard();
+  guard = new Guard(denials);
   const employees = new EmployeeRepository(db);
   const accounts = new SignInAccountRepository(db);
   const roles = new RoleRepository(db);
@@ -168,6 +171,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  denials.clear();
+
   await admin.query('TRUNCATE leave_balance');
   await admin.query(
     'TRUNCATE notification, leave_entitlement_event, leave_ledger_entry, attachment_access, attachment_download_link, leave_request_recalculation, leave_request_reclassification, leave_request_attachment, leave_request_decision, leave_request_reassignment, leave_request_routing, leave_request_withdrawal, leave_request_reversal, leave_request',
@@ -243,11 +248,13 @@ describe('who is in it', () => {
     expect(Object.keys(directory.people[0]).sort()).toEqual([
       'backOn',
       'department',
+      'description',
       'employeeId',
       'firstName',
       'jobTitle',
       'lastName',
       'workEmail',
+      'workMobile',
     ]);
 
     const wire = JSON.stringify(directory);
@@ -266,6 +273,150 @@ describe('who is in it', () => {
  * Who is away, on a fixed day rather than the clock's, so the return dates can be asserted
  * exactly. The service is built as `buildApp` builds it, with a day handed in.
  */
+describe('my own profile', () => {
+  it('needs a session', async () => {
+    expect((await fetch(`${origin}/api/me/profile`)).status).toBe(401);
+  });
+
+  it('is mine, with when I started and who I report to', async () => {
+    const mine = await profileAs(people.officer);
+
+    expect(mine.employeeId).toBe(people.officer);
+    expect(mine.startDate).toBe('2023-08-14');
+    expect(mine.manager).toMatchObject({
+      employeeId: people.teamLead,
+      firstName: 'Kofi',
+      lastName: 'Boateng',
+      jobTitle: 'Operations Team Lead',
+    });
+    expect(mine.workMobile).toBeNull();
+    expect(mine.description).toBeNull();
+  });
+});
+
+describe('changing my own profile', () => {
+  it('saves my work mobile and description, live at once, for everybody to see', async () => {
+    const response = await patch(people.officer, people.officer, {
+      workMobile: '024 555 0197',
+      description: 'Come to me about tender notices.',
+    });
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as JsonProfile).description).toBe(
+      'Come to me about tender notices.',
+    );
+
+    /* No approval step: a colleague reading the directory straight after sees it. */
+    const seen = (await directoryAs(people.partTimer)).people.find(
+      (one) => one.employeeId === people.officer,
+    );
+
+    expect(seen?.workMobile).toBe('024 555 0197');
+    expect(seen?.description).toBe('Come to me about tender notices.');
+  });
+
+  it('is audited: the old value, the new one, who changed it and when', async () => {
+    const before = new Date();
+
+    await patch(people.officer, people.officer, { description: 'First.' });
+    await patch(people.officer, people.officer, { description: 'Second.' });
+
+    const { rows } = await admin.query<{
+      action: string;
+      before: { description: string | null };
+      after: { description: string | null };
+      actor_employee_id: string;
+      occurred_at: Date;
+    }>(
+      `SELECT action, before, after, actor_employee_id, occurred_at
+         FROM audit_log
+        WHERE entity = 'employee' AND entity_id = $1
+        ORDER BY id DESC
+        LIMIT 1`,
+      [people.officer],
+    );
+
+    expect(rows[0].action).toBe('UPDATE');
+    expect(rows[0].before.description).toBe('First.');
+    expect(rows[0].after.description).toBe('Second.');
+    expect(String(rows[0].actor_employee_id)).toBe(people.officer);
+    expect(rows[0].occurred_at.getTime()).toBeGreaterThanOrEqual(before.getTime() - 5_000);
+  });
+
+  it('clears a field sent empty', async () => {
+    await patch(people.officer, people.officer, { workMobile: '024 555 0197' });
+    await patch(people.officer, people.officer, { workMobile: '' });
+
+    expect((await profileAs(people.officer)).workMobile).toBeNull();
+  });
+
+  it('refuses a 400 character description, naming the field and the limit', async () => {
+    const response = await patch(people.officer, people.officer, { description: 'a'.repeat(400) });
+    const body = (await response.json()) as { field: string; message: string };
+
+    expect(response.status).toBe(400);
+    expect(body.field).toBe('description');
+    expect(body.message).toBe('Description must be 280 characters or fewer. It is 400.');
+    expect((await profileAs(people.officer)).description).toBeNull();
+  });
+
+  it('refuses a work mobile that is not a phone number', async () => {
+    const response = await patch(people.officer, people.officer, { workMobile: 'call me' });
+
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { field: string }).field).toBe('workMobile');
+  });
+
+  it('refuses any field HR keeps, and changes nothing', async () => {
+    const response = await patch(people.officer, people.officer, {
+      description: 'Fine.',
+      jobTitle: 'Chief Executive Officer',
+    });
+
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { field: string }).field).toBe('jobTitle');
+
+    const mine = await profileAs(people.officer);
+
+    expect(mine.jobTitle).toBe('Operations Officer');
+    expect(mine.description).toBeNull();
+  });
+});
+
+describe('changing somebody else’s profile', () => {
+  it('is refused with a 403, and the attempt is logged', async () => {
+    const response = await patch(people.officer, people.partTimer, { description: 'Hacked.' });
+
+    expect(response.status).toBe(403);
+    expect(((await response.json()) as { message: string }).message).toContain(
+      'only change your own profile',
+    );
+
+    expect(denials.last()).toMatchObject({
+      employeeId: people.officer,
+      resource: 'directory',
+      action: 'editProfile',
+      subject: people.partTimer,
+    });
+  });
+
+  it('and changes nothing', async () => {
+    await patch(people.officer, people.partTimer, { description: 'Hacked.' });
+
+    expect((await profileAs(people.partTimer)).description).toBeNull();
+  });
+
+  it('is refused to HR as well', async () => {
+    expect((await patch(people.hrOfficer, people.officer, { description: 'HR.' })).status).toBe(
+      403,
+    );
+  });
+
+  it('and is a 403 whether or not the id is anybody', async () => {
+    expect((await patch(people.officer, '999999', { description: 'Nobody.' })).status).toBe(403);
+  });
+});
+
 describe('who is away today', () => {
   it('is somebody on agreed leave, with the working day they are back', async () => {
     await grant(people.officer, 20);
@@ -312,6 +463,13 @@ interface JsonEntry {
   department: { id: string; name: string };
   workEmail: string;
   backOn: string | null;
+  workMobile: string | null;
+  description: string | null;
+}
+
+interface JsonProfile extends JsonEntry {
+  startDate: string;
+  manager: { employeeId: string; firstName: string; lastName: string; jobTitle: string } | null;
 }
 
 interface JsonDirectory {
@@ -332,6 +490,26 @@ async function directoryAs(employeeId: string): Promise<JsonDirectory> {
   expect(response.status).toBe(200);
 
   return (await response.json()) as JsonDirectory;
+}
+
+async function profileAs(employeeId: string): Promise<JsonProfile> {
+  const response = await get('/api/me/profile', employeeId);
+
+  expect(response.status).toBe(200);
+
+  return (await response.json()) as JsonProfile;
+}
+
+/** Somebody, signed in as `as`, changing the profile on `whose` record. */
+function patch(as: string, whose: string, body: unknown): Promise<Response> {
+  return fetch(`${origin}/api/people/${whose}/profile`, {
+    method: 'PATCH',
+    headers: {
+      cookie: `${SESSION_COOKIE}=${mintSession(as, SECRET)}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
 }
 
 /** The directory as it reads on one day. */

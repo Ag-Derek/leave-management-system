@@ -1,6 +1,6 @@
 /** Who may read the staff directory. NFR SEC 02, §10.. */
 
-import type { Actor } from '../../core/auth/actor.js';
+import { type Actor, isSelf } from '../../core/auth/actor.js';
 import { type Decision, policyFor } from '../../core/auth/policy.js';
 
 const about = policyFor('directory');
@@ -23,5 +23,27 @@ export const directoryPolicy = {
     return actor.employeeId !== null
       ? about.allow(actor, 'read')
       : about.refuse(actor, 'read', null, 'has no employee record behind it');
+  },
+
+  /**
+   * Changing the photo, work mobile and description on a record, which is its owner's alone.
+   *
+   * Not HR's either: HR keeps everything else on the record, and these three are the
+   * person's own words about themselves. Decided on the id asked for, before anybody is
+   * looked up, so the answer is the same whether or not that id is anybody.
+   *
+   * Refused openly, with a 403, because whose profile it is is no secret. The guard writes
+   * every refusal to the denial log. NFR SEC 03.
+   */
+  editProfile(actor: Actor, employeeId: string): Decision {
+    return isSelf(actor, employeeId)
+      ? about.allow(actor, 'editProfile', employeeId)
+      : about.refuseOpenly(
+          actor,
+          'editProfile',
+          employeeId,
+          'not their own record',
+          'You can only change your own profile. Anything else on a record is kept by HR.',
+        );
   },
 };

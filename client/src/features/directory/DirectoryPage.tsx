@@ -4,17 +4,17 @@ import {
   type DirectoryPerson,
   isNotSignedIn,
   type Me,
+  type MyProfile,
   staffDirectory,
 } from '../../api';
-import { day, weekday } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
+import { AccountMenu } from './AccountMenu';
+import { MyProfilePage } from './MyProfilePage';
+import { Avatar, Today } from './person';
 
 /** How many rows the loading state draws, so the page does not jump far when the list lands. */
 const PLACEHOLDER_ROWS = 6;
-
-/** The avatar colours, each dark enough to carry white initials in either theme. */
-const TONES = 6;
 
 /**
  * The staff directory, at `#/directory`, and one person in it at `#/directory/<id>`.
@@ -66,6 +66,24 @@ export function DirectoryPage({
 
   useEffect(load, [load]);
 
+  /* My own changes, put into the list in hand so it shows them without a second fetch. */
+  const savedMine = useCallback((mine: MyProfile) => {
+    setDirectory((was) =>
+      was === undefined
+        ? was
+        : {
+            ...was,
+            people: was.people.map((one) =>
+              one.employeeId === mine.employeeId
+                ? { ...one, workMobile: mine.workMobile, description: mine.description }
+                : one,
+            ),
+          },
+    );
+  }, []);
+
+  const mine = personId !== undefined && personId === me.employeeId;
+
   return (
     <div className="portal">
       <main className="portal-page directory">
@@ -78,18 +96,13 @@ export function DirectoryPage({
 
           <h1>Directory</h1>
 
-          <p className="whoami">
-            <span className="avatar" aria-hidden="true">
-              {initials}
-            </span>
-            <span className="whoami-name">
-              {me.firstName} {me.lastName}
-            </span>
-          </p>
-
-          <button type="button" className="linkish" onClick={onSignOut}>
-            Sign out
-          </button>
+          <AccountMenu
+            me={me}
+            initials={initials}
+            profileHref={`#/directory/${encodeURIComponent(me.employeeId)}`}
+            onProfile={mine}
+            onSignOut={onSignOut}
+          />
         </header>
 
         {personId === undefined ? (
@@ -102,6 +115,12 @@ export function DirectoryPage({
             onSearch={setSearch}
             departmentId={departmentId}
             onDepartment={setDepartmentId}
+          />
+        ) : mine ? (
+          <MyProfilePage
+            today={directory?.today ?? new Date().toISOString().slice(0, 10)}
+            onSaved={savedMine}
+            onSignedOut={onSignedOut}
           />
         ) : (
           <Profile
@@ -325,7 +344,7 @@ function Profile({
     <>
       <a className="directory-back" href="#/directory">
         <Icon name="back" />
-        Everyone
+        Back to directory
       </a>
 
       {problem === undefined ? null : (
@@ -367,6 +386,22 @@ function Profile({
                 <a href={`mailto:${person.workEmail}`}>{person.workEmail}</a>
               </dd>
             </div>
+            {person.workMobile === null ? null : (
+              <div>
+                <dt>Work mobile</dt>
+                <dd>
+                  <a href={`tel:${person.workMobile.replace(/[^\d+]/g, '')}`}>
+                    {person.workMobile}
+                  </a>
+                </dd>
+              </div>
+            )}
+            {person.description === null ? null : (
+              <div>
+                <dt>What I do</dt>
+                <dd className="directory-description">{person.description}</dd>
+              </div>
+            )}
             <div>
               <dt>Today</dt>
               <dd>
@@ -378,39 +413,6 @@ function Profile({
       )}
     </>
   );
-}
-
-/** In, or the day they are back. Agreed leave only; what kind of leave is never sent. */
-function Today({ person, today }: { person: DirectoryPerson; today: string }) {
-  if (person.backOn === null) {
-    return <span className="presence">In</span>;
-  }
-
-  /* No year for a day this year, which is nearly every return; a long leave says it. */
-  const when =
-    person.backOn.slice(0, 4) === today.slice(0, 4) ? weekday(person.backOn) : day(person.backOn);
-
-  return <span className="tag is-away">Back {when}</span>;
-}
-
-/** Initials in a circle. `aria-hidden`; the name is beside it. */
-function Avatar({ person }: { person: DirectoryPerson }) {
-  return (
-    <span className={`avatar tone-${String(toneOf(person.employeeId))}`} aria-hidden="true">
-      {`${person.firstName.charAt(0)}${person.lastName.charAt(0)}`.toUpperCase()}
-    </span>
-  );
-}
-
-/** The same colour for the same person on every visit, from their id. */
-function toneOf(employeeId: string): number {
-  let hash = 0;
-
-  for (const character of employeeId) {
-    hash = (hash * 31 + character.charCodeAt(0)) % 997;
-  }
-
-  return hash % TONES;
 }
 
 function profileAddress(person: DirectoryPerson): string {
