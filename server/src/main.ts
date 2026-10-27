@@ -244,6 +244,8 @@ const app = buildApp({
   years,
   entitlementRules,
   holidays,
+  /** FR 23. When somebody away is back, in the directory. */
+  patterns,
   /** FR 25, §8.8. */
   holidayRecalculations,
   requests,

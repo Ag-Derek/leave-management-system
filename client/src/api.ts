@@ -2026,6 +2026,37 @@ export async function mySections(): Promise<string[]> {
   return sections;
 }
 
+/** A department, as the directory names one. */
+export interface DirectoryDepartment {
+  id: string;
+  name: string;
+}
+
+/** One person in the directory. */
+export interface DirectoryPerson {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+  department: DirectoryDepartment;
+  workEmail: string;
+  /** The first day they are expected back, where they are on agreed leave today. */
+  backOn: string | null;
+}
+
+export interface Directory {
+  today: string;
+  /** By surname, then first name. */
+  people: DirectoryPerson[];
+  /** The departments somebody listed is in, by name. */
+  departments: DirectoryDepartment[];
+}
+
+/** Everybody at the company today. The searching is the page's, over this one answer. */
+export async function staffDirectory(): Promise<Directory> {
+  return request<Directory>('GET', '/api/directory');
+}
+
 /**
  * Replacing your own password. NFR SEC 01.
  *

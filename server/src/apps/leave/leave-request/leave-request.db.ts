@@ -306,6 +306,33 @@ export class LeaveRequestRepository {
     return rows.map(toRequest);
   }
 
+  /**
+   * These people's agreed leave that has not ended by this day, soonest first.
+   *
+   * What the directory's return date is walked over: leave that runs straight into more
+   * leave is one absence to a colleague, however many requests it was asked for in.
+   */
+  async agreedLeaveFrom(
+    employeeIds: readonly string[],
+    day: CalendarDate,
+  ): Promise<LeaveRequest[]> {
+    if (employeeIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.db
+      .selectFrom('leave_request')
+      .selectAll()
+      .where('employee_id', 'in', [...employeeIds])
+      .where('status', '=', 'APPROVED')
+      .where('end_date', '>=', day)
+      .orderBy('start_date')
+      .orderBy('id')
+      .execute();
+
+    return rows.map(toRequest);
+  }
+
   /** Every request nobody has decided, anywhere in the company, oldest first. FR 63. */
   async undecided(): Promise<LeaveRequest[]> {
     const rows = await this.db
