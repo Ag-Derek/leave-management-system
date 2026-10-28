@@ -11,6 +11,8 @@ import {
   directoryFor,
   entryFor,
   type MyProfile,
+  type StaffChart,
+  staffChartFor,
   type WhoIsAway,
 } from './directory.js';
 import { directoryPolicy } from './policy.js';
@@ -50,6 +52,18 @@ export class DirectoryService {
     const profiles = await this.employees.profilesOf(employees.map((one) => one.id));
 
     return directoryFor({ employees, departments, away, profiles, today });
+  }
+
+  /**
+   * Who reports to whom, among the people at the company today.
+   *
+   * Built afresh on every read from the manager on each record, which is the field leave
+   * requests are routed by, so the chart cannot disagree with where a request goes.
+   */
+  async chart(actor: Actor): Promise<StaffChart> {
+    this.guard.enforce(directoryPolicy.chart(actor));
+
+    return staffChartFor(await this.employees.list({ activeOnly: true }), this.today());
   }
 
   /**

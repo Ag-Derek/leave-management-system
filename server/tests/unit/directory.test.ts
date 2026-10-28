@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { signedInAs, theSystem } from '../../src/core/auth/actor.js';
 import type { Department } from '../../src/core/organisation/department/department.js';
 import type { Employee } from '../../src/core/organisation/employee/employee.js';
-import { directoryFor, isCurrentOn } from '../../src/apps/directory/directory.js';
+import {
+  type ChartPerson,
+  directoryFor,
+  isCurrentOn,
+  staffChartFor,
+} from '../../src/apps/directory/directory.js';
 import { directoryPolicy } from '../../src/apps/directory/policy.js';
 import {
   DESCRIPTION_LIMIT,
@@ -120,6 +125,134 @@ describe('the directory', () => {
       'workEmail',
       'workMobile',
     ]);
+  });
+});
+
+describe('the organisation chart', () => {
+  const organisation = [
+    person({ id: 'ama', firstName: 'Ama', lastName: 'Owusu', jobTitle: 'Chief Executive' }),
+    person({ id: 'efua', firstName: 'Efua', lastName: 'Darko', managerId: 'ama' }),
+    person({ id: 'yaw', firstName: 'Yaw', lastName: 'Boateng', managerId: 'ama' }),
+    person({ id: 'kofi', firstName: 'Kofi', lastName: 'Addo', managerId: 'efua' }),
+    person({ id: 'akosua', firstName: 'Akosua', lastName: 'Asante', managerId: 'efua' }),
+  ];
+
+  it('is drawn from the manager on each record, the head at the top', () => {
+    const chart = staffChartFor(organisation, TODAY);
+
+    expect(chart.lines).toHaveLength(1);
+    expect(chart.lines[0].standing).toBe('HEAD_OF_THE_ORGANISATION');
+    expect(shape(chart.lines[0].top)).toEqual({
+      ama: { yaw: {}, efua: { kofi: {}, akosua: {} } },
+    });
+    expect(chart.total).toBe(5);
+  });
+
+  it('puts each person’s reports in surname order', () => {
+    const efua = staffChartFor(organisation, TODAY).lines[0].top.reports[1];
+
+    expect(efua.reports.map((one) => one.lastName)).toEqual(['Addo', 'Asante']);
+  });
+
+  it('leaves out anybody who is not current', () => {
+    const chart = staffChartFor(
+      [
+        ...organisation,
+        person({ id: 'kojo', managerId: 'efua', exitDate: '2026-07-31' }),
+        person({ id: 'new', managerId: 'efua', startDate: '2026-11-02' }),
+      ],
+      TODAY,
+    );
+
+    expect(chart.total).toBe(5);
+    expect(JSON.stringify(chart)).not.toContain('kojo');
+    expect(JSON.stringify(chart)).not.toContain('"new"');
+  });
+
+  /* The fault the chart is for spotting, as the staff chart sees it: the manager is gone
+     from it, so their team is a line of its own and says why. */
+  it('flags a team whose manager has left, and still draws all of it', () => {
+    const chart = staffChartFor(
+      organisation.map((one) =>
+        one.id === 'efua'
+          ? { ...one, employmentStatus: 'TERMINATED' as const, exitDate: '2026-07-31' }
+          : one,
+      ),
+      TODAY,
+    );
+
+    expect(chart.lines.map((line) => line.standing)).toEqual([
+      'HEAD_OF_THE_ORGANISATION',
+      'MANAGER_NOT_ON_THE_CHART',
+      'MANAGER_NOT_ON_THE_CHART',
+    ]);
+    expect(chart.total).toBe(4);
+  });
+
+  it('flags a reporting line that goes round in a circle rather than following it for ever', () => {
+    const chart = staffChartFor(
+      [
+        ...organisation,
+        person({ id: 'nii', firstName: 'Nii', lastName: 'Lartey', managerId: 'adwoa' }),
+        person({ id: 'adwoa', firstName: 'Adwoa', lastName: 'Tetteh', managerId: 'nii' }),
+      ],
+      TODAY,
+    );
+
+    expect(chart.lines.map((line) => line.standing)).toEqual([
+      'HEAD_OF_THE_ORGANISATION',
+      'REPORTING_LINE_LOOPS',
+    ]);
+    expect(chart.total).toBe(7);
+  });
+
+  it('flags a second person with no manager', () => {
+    const chart = staffChartFor(
+      [...organisation, person({ id: 'nii', firstName: 'Nii', lastName: 'Lartey' })],
+      TODAY,
+    );
+
+    expect(chart.lines.map((line) => line.standing)).toEqual([
+      'HEAD_OF_THE_ORGANISATION',
+      'SECOND_HEAD',
+    ]);
+  });
+
+  it('is an empty chart, not a failure, when nobody is current', () => {
+    expect(staffChartFor([], TODAY)).toEqual({ today: TODAY, lines: [], total: 0 });
+  });
+
+  it('carries a name and a job title of each person, and nothing else from the record', () => {
+    const top = staffChartFor(organisation, TODAY).lines[0].top;
+
+    expect(Object.keys(top).sort()).toEqual([
+      'employeeId',
+      'firstName',
+      'jobTitle',
+      'lastName',
+      'reports',
+    ]);
+    expect(JSON.stringify(top)).not.toContain('RH-');
+    expect(JSON.stringify(top)).not.toContain('managerId');
+  });
+
+  /** A branch as nested ids, so a whole shape reads as one line. */
+  function shape(top: ChartPerson): Record<string, unknown> {
+    return {
+      [top.employeeId]: Object.assign({}, ...top.reports.map(shape)) as Record<string, unknown>,
+    };
+  }
+});
+
+describe('who may read the organisation chart', () => {
+  it('is any employee', () => {
+    expect(
+      directoryPolicy.chart(signedInAs('adwoa', { roles: ['EMPLOYEE'], isManager: false })).allowed,
+    ).toBe(true);
+  });
+
+  it('and not an actor with nobody behind it', () => {
+    expect(directoryPolicy.chart(theSystem('a directory unit test')).allowed).toBe(false);
   });
 });
 

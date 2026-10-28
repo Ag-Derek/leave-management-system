@@ -39,6 +39,29 @@ export function Avatar({
   );
 }
 
+/** Where somebody's profile is. */
+export function profileAddress(person: Pick<DirectoryPerson, 'employeeId'>): string {
+  return `#/directory/${encodeURIComponent(person.employeeId)}`;
+}
+
+/** Where the organisation chart is, centred on somebody when one is named. */
+export function chartAddress(person?: Pick<DirectoryPerson, 'employeeId'>): string {
+  return person === undefined
+    ? '#/directory/chart'
+    : `#/directory/chart/${encodeURIComponent(person.employeeId)}`;
+}
+
+/**
+ * Text as a search compares it: lower case, and without accents, so "akosua" finds "Akosua"
+ * and "ama" finds "Amá".
+ */
+export function fold(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}
+
 /** The same colour for the same person on every visit, from their id. */
 function toneOf(employeeId: string): number {
   let hash = 0;

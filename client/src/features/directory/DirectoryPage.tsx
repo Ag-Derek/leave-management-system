@@ -11,13 +11,21 @@ import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { AccountMenu } from './AccountMenu';
 import { MyProfilePage } from './MyProfilePage';
-import { Avatar, Today } from './person';
+import { OrgChart } from './OrgChart';
+import { Avatar, chartAddress, fold, profileAddress, Today } from './person';
 
 /** How many rows the loading state draws, so the page does not jump far when the list lands. */
 const PLACEHOLDER_ROWS = 6;
 
+/** Where a profile's back link goes: the view it was opened from. */
+export interface BackTo {
+  href: string;
+  label: string;
+}
+
 /**
- * The staff directory, at `#/directory`, and one person in it at `#/directory/<id>`.
+ * The staff directory, at `#/directory`, the organisation chart at `#/directory/chart`, and
+ * one person at `#/directory/<id>`.
  *
  * The list is fetched once and searched here, so typing never waits on the server. The
  * search stays put while somebody looks at a profile and comes back, because this one
@@ -41,7 +49,26 @@ export function DirectoryPage({
   const [search, setSearch] = useState('');
   const [departmentId, setDepartmentId] = useState('');
 
-  const personId = usePersonInTheAddress();
+  const address = useDirectoryAddress();
+  const personId = address.view === 'profile' ? address.personId : undefined;
+
+  /* Which of the two views a profile was opened from, so its back link returns there. */
+  const [cameFrom, setCameFrom] = useState<'people' | 'chart'>('people');
+
+  useEffect(() => {
+    if (address.view !== 'profile') {
+      setCameFrom(address.view);
+    }
+  }, [address.view]);
+
+  /* Back to the chart centres it on the person just looked at. */
+  const back: BackTo =
+    cameFrom === 'chart'
+      ? {
+          href: personId === undefined ? chartAddress() : chartAddress({ employeeId: personId }),
+          label: 'Back to organisation chart',
+        }
+      : { href: '#/directory', label: 'Back to directory' };
 
   const load = useCallback(() => {
     setLoading(true);
@@ -105,7 +132,18 @@ export function DirectoryPage({
           />
         </header>
 
-        {personId === undefined ? (
+        {address.view === 'profile' ? null : (
+          <nav className="directory-views" aria-label="Directory views">
+            <a href="#/directory" aria-current={address.view === 'people' ? 'page' : undefined}>
+              People
+            </a>
+            <a href={chartAddress()} aria-current={address.view === 'chart' ? 'page' : undefined}>
+              Organisation chart
+            </a>
+          </nav>
+        )}
+
+        {address.view === 'people' ? (
           <People
             directory={directory}
             loading={loading}
@@ -116,9 +154,12 @@ export function DirectoryPage({
             departmentId={departmentId}
             onDepartment={setDepartmentId}
           />
+        ) : address.view === 'chart' ? (
+          <OrgChart focusId={address.focusId} onSignedOut={onSignedOut} />
         ) : mine ? (
           <MyProfilePage
             today={directory?.today ?? new Date().toISOString().slice(0, 10)}
+            back={back}
             onSaved={savedMine}
             onSignedOut={onSignedOut}
           />
@@ -129,6 +170,7 @@ export function DirectoryPage({
             loading={loading}
             problem={problem}
             onRetry={load}
+            back={back}
           />
         )}
       </main>
@@ -333,18 +375,20 @@ function Profile({
   loading,
   problem,
   onRetry,
+  back,
 }: {
   person: DirectoryPerson | undefined;
   directory: Directory | undefined;
   loading: boolean;
   problem: Problem | undefined;
   onRetry: () => void;
+  back: BackTo;
 }) {
   return (
     <>
-      <a className="directory-back" href="#/directory">
+      <a className="directory-back" href={back.href}>
         <Icon name="back" />
-        Back to directory
+        {back.label}
       </a>
 
       {problem === undefined ? null : (
@@ -372,6 +416,10 @@ function Profile({
                 {person.firstName} {person.lastName}
               </h2>
               {person.jobTitle === null ? null : <p className="muted">{person.jobTitle}</p>}
+              <a className="view-in-chart" href={chartAddress(person)}>
+                <Icon name="stage" />
+                View in org chart
+              </a>
             </div>
           </div>
 
@@ -415,36 +463,36 @@ function Profile({
   );
 }
 
-function profileAddress(person: DirectoryPerson): string {
-  return `#/directory/${encodeURIComponent(person.employeeId)}`;
-}
-
 /** "1 person", "12 people". */
 function people(count: number): string {
   return `${String(count)} ${count === 1 ? 'person' : 'people'}`;
 }
 
+type DirectoryAddress =
+  | { view: 'people' }
+  | { view: 'chart'; focusId: string | undefined }
+  | { view: 'profile'; personId: string };
+
 /**
- * Text as a search compares it: lower case, and without accents, so "akosua" finds "Akosua"
- * and "ama" finds "Amá".
+ * Which view the address is for: the list at `#/directory`, the chart at `#/directory/chart`
+ * (centred on somebody at `#/directory/chart/<id>`), or a profile at `#/directory/<id>`.
+ *
+ * `chart` cannot be anybody's id: ids are numbers.
  */
-function fold(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase();
-}
-
-/** The id after `#/directory/`, or undefined on the list itself. */
-function usePersonInTheAddress(): string | undefined {
+function useDirectoryAddress(): DirectoryAddress {
   const hash = useSyncExternalStore(subscribeToTheAddress, () => window.location.hash);
-  const [, id] = /^#\/?directory\/([^?]+)/.exec(hash) ?? [];
+  const [, path = ''] = /^#\/?directory\/([^?]*)/.exec(hash) ?? [];
+  const [first = '', second = ''] = path.split('/');
 
-  if (id === undefined || id === '') {
-    return undefined;
+  if (first === 'chart') {
+    return { view: 'chart', focusId: second === '' ? undefined : decoded(second) };
   }
 
-  /* A link pasted with a stray `%` is somebody nobody has, not a page that will not draw. */
+  return first === '' ? { view: 'people' } : { view: 'profile', personId: decoded(first) };
+}
+
+/* A link pasted with a stray `%` is somebody nobody has, not a page that will not draw. */
+function decoded(id: string): string {
   try {
     return decodeURIComponent(id);
   } catch {

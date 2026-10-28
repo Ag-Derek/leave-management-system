@@ -269,6 +269,71 @@ describe('who is in it', () => {
   });
 });
 
+describe('the organisation chart', () => {
+  it('needs a session', async () => {
+    expect((await fetch(`${origin}/api/directory/chart`)).status).toBe(401);
+  });
+
+  it('is any employee’s, not only HR’s', async () => {
+    expect((await get('/api/directory/chart', people.officer)).status).toBe(200);
+  });
+
+  /* The story's first criterion: every line on the chart is the manager on a record. */
+  it('matches the reporting lines in the employee records, for everybody current', async () => {
+    const chart = await chartAs(people.officer);
+
+    expect(chart.lines).toHaveLength(1);
+    expect(chart.lines[0].standing).toBe('HEAD_OF_THE_ORGANISATION');
+    expect(chart.lines[0].top.employeeId).toBe(people.ceo);
+
+    const { rows } = await admin.query<{ id: string; manager_id: string | null }>(
+      "SELECT id::text, manager_id::text FROM employee WHERE employment_status = 'ACTIVE'",
+    );
+    const drawn = linesOf(chart.lines[0].top, null);
+
+    expect(drawn.sort()).toEqual(rows.map((row) => `${row.manager_id} -> ${row.id}`).sort());
+    expect(chart.total).toBe(rows.length);
+  });
+
+  it('leaves out the leaver', async () => {
+    expect(JSON.stringify(await chartAs(people.officer))).not.toContain(`"${people.leaver}"`);
+  });
+
+  it('flags the team of a manager who has left, rather than dropping it', async () => {
+    await admin.query(
+      `UPDATE employee SET employment_status = 'TERMINATED', exit_date = '2026-01-31'
+        WHERE id = $1`,
+      [people.teamLead],
+    );
+
+    const chart = await chartAs(people.officer);
+
+    expect(chart.lines.slice(1).map((line) => line.standing)).toEqual([
+      'MANAGER_NOT_ON_THE_CHART',
+      'MANAGER_NOT_ON_THE_CHART',
+    ]);
+    expect(
+      chart.lines
+        .slice(1)
+        .map((line) => line.top.employeeId)
+        .sort(),
+    ).toEqual([people.officer, people.partTimer].sort());
+  });
+
+  it('carries a name and a job title of each person, and no employee number', async () => {
+    const chart = await chartAs(people.officer);
+
+    expect(Object.keys(chart.lines[0].top).sort()).toEqual([
+      'employeeId',
+      'firstName',
+      'jobTitle',
+      'lastName',
+      'reports',
+    ]);
+    expect(JSON.stringify(chart)).not.toContain('RH-0');
+  });
+});
+
 /**
  * Who is away, on a fixed day rather than the clock's, so the return dates can be asserted
  * exactly. The service is built as `buildApp` builds it, with a day handed in.
@@ -476,6 +541,36 @@ interface JsonDirectory {
   today: string;
   people: JsonEntry[];
   departments: { id: string; name: string }[];
+}
+
+interface JsonChartPerson {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+  reports: JsonChartPerson[];
+}
+
+interface JsonChart {
+  today: string;
+  lines: { standing: string; top: JsonChartPerson }[];
+  total: number;
+}
+
+async function chartAs(employeeId: string): Promise<JsonChart> {
+  const response = await get('/api/directory/chart', employeeId);
+
+  expect(response.status).toBe(200);
+
+  return (await response.json()) as JsonChart;
+}
+
+/** Every line drawn under somebody, as "manager -> report". */
+function linesOf(person: JsonChartPerson, above: string | null): string[] {
+  return [
+    `${above} -> ${person.employeeId}`,
+    ...person.reports.flatMap((report) => linesOf(report, person.employeeId)),
+  ];
 }
 
 function get(path: string, employeeId: string): Promise<Response> {
