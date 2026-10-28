@@ -494,7 +494,7 @@ describe('the organisation chart', () => {
     ).toEqual([people.officer, people.partTimer].sort());
   });
 
-  it('carries a name and a job title of each person, and no employee number', async () => {
+  it('carries a name, a job title and a photo of each person, and no employee number', async () => {
     const chart = await chartAs(people.officer);
 
     expect(Object.keys(chart.lines[0].top).sort()).toEqual([
@@ -502,6 +502,7 @@ describe('the organisation chart', () => {
       'firstName',
       'jobTitle',
       'lastName',
+      'photo',
       'reports',
     ]);
     expect(JSON.stringify(chart)).not.toContain('RH-0');
@@ -872,10 +873,14 @@ describe('a profile photo', () => {
 
     expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
 
+    /* `max-age=0` is what a browser sends when it revalidates. Without a Cache-Control of its
+       own, fetch adds `no-cache` to any request carrying If-None-Match, and `no-cache` is a
+       request for a full answer, which Express rightly gives. */
     const again = await fetch(`${origin}${photo?.thumbnail ?? ''}`, {
       headers: {
         cookie: `${SESSION_COOKIE}=${mintSession(people.partTimer, SECRET)}`,
         'if-none-match': etag,
+        'cache-control': 'max-age=0',
       },
     });
 
