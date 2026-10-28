@@ -2,6 +2,7 @@
 
 import type { CalendarDate } from '../../core/calendar/time.js';
 import type { Department } from '../../core/organisation/department/department.js';
+import { isCurrentOn, type NotListedReason } from '../../core/organisation/employee/current.js';
 import type { Employee, EmployeeProfile } from '../../core/organisation/employee/employee.js';
 import {
   buildOrgChart,
@@ -65,6 +66,21 @@ export interface MyProfile extends DirectoryEntry {
   } | null;
 }
 
+/**
+ * One person's profile, as `#/directory/<id>` asks for it.
+ *
+ * Anybody current, to anybody. Somebody who is not current only to HR, with why and the two
+ * dates that decide it; to anybody else they are a 404, the same answer as an id that is
+ * nobody.
+ */
+export interface DirectoryProfile extends DirectoryEntry {
+  notListed: {
+    reason: NotListedReason;
+    startDate: CalendarDate;
+    exitDate: CalendarDate | null;
+  } | null;
+}
+
 export interface Directory {
   /** The day "current" and "away" were judged on. */
   today: CalendarDate;
@@ -84,20 +100,14 @@ export interface DirectoryFacts {
   today: CalendarDate;
 }
 
-/**
- * Whether somebody is at the company on this day.
- *
- * ACTIVE, started, and not yet gone. The exit date is their last day, so they are still
- * listed on it. A SUSPENDED record is still employed but is not listed: the directory is
- * who you can expect to reach.
- */
-export function isCurrentOn(employee: Employee, day: CalendarDate): boolean {
-  return (
-    employee.employmentStatus === 'ACTIVE' &&
-    employee.startDate <= day &&
-    (employee.exitDate === null || employee.exitDate >= day)
-  );
-}
+/* Who the directory lists is the organisation's rule, not the directory's: the job that moves
+   a leaver's reports asks the same question. Kept in core and passed on from here. */
+export {
+  isCurrentOn,
+  NOT_LISTED_REASONS,
+  type NotListedReason,
+  whyNotListed,
+} from '../../core/organisation/employee/current.js';
 
 /** Compares names the way a person reads a list: ignoring case and accents. */
 const names = new Intl.Collator('en', { sensitivity: 'base' });
