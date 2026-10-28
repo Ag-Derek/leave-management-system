@@ -667,34 +667,11 @@ a.portal-app:hover {
   height: 1.1rem;
 }
 
-.directory-profile {
-  max-width: 40rem;
-  padding: var(--gap-lg);
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-.directory-profile-head {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: var(--gap-lg);
-}
-
-.directory-profile-head h2 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
-.directory-profile-head .muted {
-  margin: 0;
-}
-
 /* Kept as written, line breaks and all. */
 .directory-description {
+  margin: 0;
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 /* ------------------------------------------------------------ my own profile */
@@ -878,36 +855,47 @@ a.portal-app:hover {
   }
 }
 
-.directory .directory-profile-head .avatar {
-  width: 4rem;
-  height: 4rem;
-  font-size: 1.25rem;
+/* --------------------------------------------------------- a colleague's profile */
+
+/* Somebody who has written no description: the other two cards share the row. */
+.my-profile-columns.is-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.directory-profile dl {
-  display: grid;
-  gap: 0.75rem;
-  margin: 0;
-}
-
-.directory-profile dl > div {
-  display: grid;
-  grid-template-columns: 8rem minmax(0, 1fr);
-  gap: var(--gap);
-}
-
-.directory-profile dt {
-  color: var(--ink-faint);
-  font-size: 0.875rem;
-}
-
-.directory-profile dd {
-  margin: 0;
-}
-
-.directory-profile dd a {
+.my-profile-fact > p > a {
   color: var(--accent);
-  overflow-wrap: anywhere;
+}
+
+.my-profile-manager a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.my-profile-manager a:hover {
+  text-decoration: underline;
+}
+
+.my-profile-reports {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.my-profile-reports .my-profile-manager {
+  margin: 0;
+}
+
+.my-profile-footnote {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 56rem) {
+  .my-profile-columns.is-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* A phone: each person a short card rather than a row four columns wide. The email and the
@@ -962,11 +950,6 @@ a.portal-app:hover {
   .directory-table td.directory-email {
     grid-area: email;
     padding-left: 3.25rem;
-  }
-
-  .directory-profile dl > div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.1rem;
   }
 }
 

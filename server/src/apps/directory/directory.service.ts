@@ -7,6 +7,8 @@ import type { DepartmentRepository } from '../../core/organisation/department/de
 import { EmployeeNotFound } from '../../core/organisation/employee/employee.js';
 import type { EmployeeRepository } from '../../core/organisation/employee/employee.db.js';
 import {
+  colleagueFor,
+  type ColleagueProfile,
   type Directory,
   directoryFor,
   entryFor,
@@ -67,8 +69,45 @@ export class DirectoryService {
   }
 
   /**
-   * The reader's own profile, with what only they are shown of it: when they started and who
-   * they report to.
+   * One colleague, with who they report to and who reports to them.
+   *
+   * Found among everybody current rather than by id, which also finds their reports, and
+   * means an id that is not a number is nobody rather than a query that fails. Anybody not
+   * current is EmployeeNotFound, a 404 that does not say whether the id was ever anybody's.
+   */
+  async colleague(actor: Actor, employeeId: string): Promise<ColleagueProfile> {
+    this.guard.enforce(directoryPolicy.read(actor));
+
+    const today = this.today();
+
+    const [employees, departments, away] = await Promise.all([
+      this.employees.list({ activeOnly: true }),
+      this.departments.list(),
+      this.away === undefined ? [] : this.away.awayOn(today),
+    ]);
+
+    /* Asked only for an id the list holds, so an id too large for a bigint is never sent. */
+    const profiles = employees.some((one) => one.id === employeeId)
+      ? await this.employees.profilesOf([employeeId])
+      : [];
+
+    const found = colleagueFor(employeeId, {
+      employees,
+      departments,
+      away,
+      profile: profiles[0],
+      today,
+    });
+
+    if (found === undefined) {
+      throw new EmployeeNotFound(employeeId);
+    }
+
+    return found;
+  }
+
+  /**
+   * The reader's own profile, with what only they are shown of it: when they started.
    */
   async mine(actor: Actor): Promise<MyProfile> {
     this.guard.enforce(directoryPolicy.read(actor));

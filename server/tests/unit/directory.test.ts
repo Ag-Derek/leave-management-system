@@ -4,6 +4,7 @@ import type { Department } from '../../src/core/organisation/department/departme
 import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import {
   type ChartPerson,
+  colleagueFor,
   directoryFor,
   isCurrentOn,
   staffChartFor,
@@ -242,6 +243,80 @@ describe('the organisation chart', () => {
       [top.employeeId]: Object.assign({}, ...top.reports.map(shape)) as Record<string, unknown>,
     };
   }
+});
+
+describe('a colleague’s profile', () => {
+  const organisation = [
+    person({ id: 'ama', firstName: 'Ama', lastName: 'Owusu', jobTitle: 'Chief Executive' }),
+    person({ id: 'efua', firstName: 'Efua', lastName: 'Darko', managerId: 'ama' }),
+    person({ id: 'kofi', firstName: 'Kofi', lastName: 'Addo', managerId: 'efua' }),
+    person({ id: 'akosua', firstName: 'Akosua', lastName: 'Asante', managerId: 'efua' }),
+    person({
+      id: 'kojo',
+      firstName: 'Kojo',
+      lastName: 'Antwi',
+      managerId: 'efua',
+      exitDate: '2026-07-31',
+    }),
+  ];
+
+  const facts = {
+    employees: organisation,
+    departments: [OPERATIONS],
+    away: [{ employeeId: 'akosua', backOn: '2026-11-02' }],
+    profile: undefined,
+    today: TODAY,
+  };
+
+  it('names who they report to, and who reports to them by surname, leavers left out', () => {
+    const efua = colleagueFor('efua', facts);
+
+    expect(efua?.manager).toEqual({
+      employeeId: 'ama',
+      firstName: 'Ama',
+      lastName: 'Owusu',
+      jobTitle: 'Chief Executive',
+    });
+    expect(efua?.reports.map((one) => one.employeeId)).toEqual(['kofi', 'akosua']);
+  });
+
+  it('has no manager for the head of the organisation, and no reports for somebody with none', () => {
+    expect(colleagueFor('ama', facts)?.manager).toBeNull();
+    expect(colleagueFor('kofi', facts)?.reports).toEqual([]);
+  });
+
+  it('has no manager where the manager has left', () => {
+    const left = organisation.map((one) =>
+      one.id === 'efua' ? { ...one, exitDate: '2026-07-31' } : one,
+    );
+
+    expect(colleagueFor('kofi', { ...facts, employees: left })?.manager).toBeNull();
+  });
+
+  it('carries the day they are back, and what they keep themselves', () => {
+    const akosua = colleagueFor('akosua', {
+      ...facts,
+      profile: { employeeId: 'akosua', workMobile: '024 555 0184', description: 'Deliveries.' },
+    });
+
+    expect(akosua?.backOn).toBe('2026-11-02');
+    expect(akosua?.workMobile).toBe('024 555 0184');
+    expect(akosua?.description).toBe('Deliveries.');
+  });
+
+  it('is nobody for a leaver, and for an id that is nobody’s', () => {
+    expect(colleagueFor('kojo', facts)).toBeUndefined();
+    expect(colleagueFor('999', facts)).toBeUndefined();
+    expect(colleagueFor('not-a-number', facts)).toBeUndefined();
+  });
+
+  it('carries no start date, no employee number and no manager id', () => {
+    const wire = JSON.stringify(colleagueFor('efua', facts));
+
+    expect(wire).not.toContain('startDate');
+    expect(wire).not.toContain('RH-');
+    expect(wire).not.toContain('managerId');
+  });
 });
 
 describe('who may read the organisation chart', () => {

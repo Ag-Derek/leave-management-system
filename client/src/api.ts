@@ -2047,15 +2047,31 @@ export interface DirectoryPerson {
   description: string | null;
 }
 
+/** Somebody named on a profile: a manager, or one of their reports. */
+export interface PersonInBrief {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+}
+
 /** My own profile, with the HR-kept facts only I am shown. */
 export interface MyProfile extends DirectoryPerson {
   startDate: string;
-  manager: {
-    employeeId: string;
-    firstName: string;
-    lastName: string;
-    jobTitle: string | null;
-  } | null;
+  manager: PersonInBrief | null;
+}
+
+/** A colleague's profile, read only, with their place on the chart. */
+export interface ColleagueProfile extends DirectoryPerson {
+  /** Null for the head of the organisation, or where their manager has left. */
+  manager: PersonInBrief | null;
+  /** By surname. */
+  reports: PersonInBrief[];
+}
+
+/** One colleague. A 404 for a leaver and for an id that is nobody's. */
+export async function colleagueProfile(employeeId: string): Promise<ColleagueProfile> {
+  return request<ColleagueProfile>('GET', `/api/people/${encodeURIComponent(employeeId)}/profile`);
 }
 
 /** What I may change on my own record. An absent field is left alone; empty clears it. */

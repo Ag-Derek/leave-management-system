@@ -51,9 +51,8 @@ export interface DirectoryEntry {
 /**
  * Somebody's own profile, as they see it to edit it.
  *
- * What everybody sees of them, and the HR-kept facts only they are shown: when they started,
- * and who they report to. A colleague's manager is drawn on the chart rather than written on
- * their profile, so it is named here for nobody but the person themselves.
+ * What everybody sees of them, when they started, which only they are shown, and who they
+ * report to.
  */
 export interface MyProfile extends DirectoryEntry {
   startDate: CalendarDate;
@@ -63,6 +62,28 @@ export interface MyProfile extends DirectoryEntry {
     lastName: string;
     jobTitle: string | null;
   } | null;
+}
+
+/** Somebody named on a colleague's profile: their manager, or one of their reports. */
+export interface PersonInBrief {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+}
+
+/**
+ * A colleague's profile, as anybody at the company may read it.
+ *
+ * What the directory shows of them, and their place on the chart: who they report to and
+ * who reports to them. The chart already shows every employee that much, so nothing here is
+ * new to the reader. When they started is not on it; that stays on their own profile.
+ */
+export interface ColleagueProfile extends DirectoryEntry {
+  /** Null for the head of the organisation, or where their manager is no longer current. */
+  manager: PersonInBrief | null;
+  /** The people current today who report to them, by surname. */
+  reports: PersonInBrief[];
 }
 
 export interface Directory {
@@ -163,6 +184,49 @@ export function directoryFor(facts: DirectoryFacts): Directory {
     today: facts.today,
     people,
     departments: [...listed.values()].sort((a, b) => names.compare(a.name, b.name)),
+  };
+}
+
+/**
+ * One colleague's profile, or undefined where nobody current has that id.
+ *
+ * A leaver, a suspended record and an id that is nobody's all come back undefined, so the
+ * answer cannot be used to tell one from another.
+ */
+export function colleagueFor(
+  employeeId: string,
+  facts: Omit<DirectoryFacts, 'profiles'> & { profile: EmployeeProfile | undefined },
+): ColleagueProfile | undefined {
+  const current = facts.employees.filter((employee) => isCurrentOn(employee, facts.today));
+  const employee = current.find((one) => one.id === employeeId);
+
+  if (employee === undefined) {
+    return undefined;
+  }
+
+  const manager = current.find((one) => one.id === employee.managerId);
+
+  return {
+    ...entryFor(
+      employee,
+      facts.departments.find((one) => one.id === employee.departmentId),
+      facts.away.find((one) => one.employeeId === employee.id)?.backOn,
+      facts.profile,
+    ),
+    manager: manager === undefined ? null : inBrief(manager),
+    reports: current
+      .filter((one) => one.managerId === employee.id)
+      .map(inBrief)
+      .sort(bySurname),
+  };
+}
+
+function inBrief(employee: Employee): PersonInBrief {
+  return {
+    employeeId: employee.id,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    jobTitle: employee.jobTitle,
   };
 }
 

@@ -10,6 +10,7 @@ import {
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { AccountMenu } from './AccountMenu';
+import { ColleagueProfilePage } from './ColleagueProfilePage';
 import { MyProfilePage } from './MyProfilePage';
 import { OrgChart } from './OrgChart';
 import { Avatar, chartAddress, fold, profileAddress, Today } from './person';
@@ -29,7 +30,8 @@ export interface BackTo {
  *
  * The list is fetched once and searched here, so typing never waits on the server. The
  * search stays put while somebody looks at a profile and comes back, because this one
- * component draws both.
+ * component draws both. A profile is fetched on its own, for the reporting line the list
+ * does not carry.
  */
 export function DirectoryPage({
   me,
@@ -164,13 +166,11 @@ export function DirectoryPage({
             onSignedOut={onSignedOut}
           />
         ) : (
-          <Profile
-            person={directory?.people.find((one) => one.employeeId === personId)}
-            directory={directory}
-            loading={loading}
-            problem={problem}
-            onRetry={load}
+          <ColleagueProfilePage
+            employeeId={address.personId}
+            today={directory?.today ?? new Date().toISOString().slice(0, 10)}
             back={back}
+            onSignedOut={onSignedOut}
           />
         )}
       </main>
@@ -365,101 +365,6 @@ function Loading() {
         </div>
       ))}
     </div>
-  );
-}
-
-/** One person, from the same list the table drew. */
-function Profile({
-  person,
-  directory,
-  loading,
-  problem,
-  onRetry,
-  back,
-}: {
-  person: DirectoryPerson | undefined;
-  directory: Directory | undefined;
-  loading: boolean;
-  problem: Problem | undefined;
-  onRetry: () => void;
-  back: BackTo;
-}) {
-  return (
-    <>
-      <a className="directory-back" href={back.href}>
-        <Icon name="back" />
-        {back.label}
-      </a>
-
-      {problem === undefined ? null : (
-        <Notice problem={problem} retrying={loading} onRetry={onRetry} />
-      )}
-
-      {directory === undefined ? (
-        problem === undefined ? (
-          <Loading />
-        ) : null
-      ) : person === undefined ? (
-        <>
-          <h2>Not in the directory</h2>
-          <p className="notice plain">
-            Nobody currently at Remat has that address. They may have left, or the link may be out
-            of date.
-          </p>
-        </>
-      ) : (
-        <section className="directory-profile">
-          <div className="directory-profile-head">
-            <Avatar person={person} />
-            <div>
-              <h2>
-                {person.firstName} {person.lastName}
-              </h2>
-              {person.jobTitle === null ? null : <p className="muted">{person.jobTitle}</p>}
-              <a className="view-in-chart" href={chartAddress(person)}>
-                <Icon name="stage" />
-                View in org chart
-              </a>
-            </div>
-          </div>
-
-          <dl>
-            <div>
-              <dt>Department</dt>
-              <dd>{person.department.name}</dd>
-            </div>
-            <div>
-              <dt>Work email</dt>
-              <dd>
-                <a href={`mailto:${person.workEmail}`}>{person.workEmail}</a>
-              </dd>
-            </div>
-            {person.workMobile === null ? null : (
-              <div>
-                <dt>Work mobile</dt>
-                <dd>
-                  <a href={`tel:${person.workMobile.replace(/[^\d+]/g, '')}`}>
-                    {person.workMobile}
-                  </a>
-                </dd>
-              </div>
-            )}
-            {person.description === null ? null : (
-              <div>
-                <dt>What I do</dt>
-                <dd className="directory-description">{person.description}</dd>
-              </div>
-            )}
-            <div>
-              <dt>Today</dt>
-              <dd>
-                <Today person={person} today={directory.today} />
-              </dd>
-            </div>
-          </dl>
-        </section>
-      )}
-    </>
   );
 }
 

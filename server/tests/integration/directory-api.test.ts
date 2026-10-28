@@ -65,8 +65,8 @@ import { delegationService } from '../support/delegations.js';
  *   **Away is agreed leave only, with the day they are back.** A request still being decided
  *   marks nobody.
  *
- *   **Nothing but the directory's fields leaves the server.** No manager, no employee number,
- *   no kind of leave.
+ *   **Nothing but the directory's fields leaves the server.** No employee number, no kind of
+ *   leave, and a colleague's reporting line only on their profile.
  */
 
 const testDatabaseUrl = await databaseForThisFile();
@@ -359,6 +359,74 @@ describe('my own profile', () => {
   });
 });
 
+describe('a colleague’s profile', () => {
+  it('needs a session', async () => {
+    expect((await fetch(`${origin}/api/people/${people.teamLead}/profile`)).status).toBe(401);
+  });
+
+  it('is any employee’s to read, with who they report to and who reports to them', async () => {
+    const response = await get(`/api/people/${people.teamLead}/profile`, people.partTimer);
+
+    expect(response.status).toBe(200);
+
+    const kofi = (await response.json()) as JsonColleague;
+
+    expect(kofi.firstName).toBe('Kofi');
+    expect(kofi.manager).not.toBeNull();
+    expect(kofi.reports.map((one) => one.employeeId).sort()).toEqual(
+      [people.officer, people.partTimer].sort(),
+    );
+  });
+
+  it('matches the reporting lines in the employee records', async () => {
+    const kofi = await colleagueAs(people.officer, people.teamLead);
+    const { rows } = await admin.query<{ manager_id: string }>(
+      'SELECT manager_id::text FROM employee WHERE id = $1',
+      [people.teamLead],
+    );
+
+    expect(kofi.manager?.employeeId).toBe(rows[0].manager_id);
+  });
+
+  it('carries the directory’s fields and the reporting line, and no start date', async () => {
+    const kofi = await colleagueAs(people.officer, people.teamLead);
+
+    expect(Object.keys(kofi).sort()).toEqual([
+      'backOn',
+      'department',
+      'description',
+      'employeeId',
+      'firstName',
+      'jobTitle',
+      'lastName',
+      'manager',
+      'reports',
+      'workEmail',
+      'workMobile',
+    ]);
+    expect(JSON.stringify(kofi)).not.toContain('RH-0');
+  });
+
+  it('shows what they wrote themselves as soon as they save it', async () => {
+    await patch(people.officer, people.officer, { description: 'Tenders.' });
+
+    expect((await colleagueAs(people.partTimer, people.officer)).description).toBe('Tenders.');
+  });
+
+  it('is a 404 for a leaver, an id that is nobody’s, not a number or too large, alike', async () => {
+    const answers = await Promise.all(
+      [people.leaver, '999999', 'not-a-number', '99999999999999999999'].map(async (id) => {
+        const response = await get(`/api/people/${id}/profile`, people.officer);
+
+        return { status: response.status, body: (await response.json()) as unknown };
+      }),
+    );
+
+    expect(answers.map((one) => one.status)).toEqual([404, 404, 404, 404]);
+    expect(new Set(answers.map((one) => JSON.stringify(one.body))).size).toBe(1);
+  });
+});
+
 describe('changing my own profile', () => {
   it('saves my work mobile and description, live at once, for everybody to see', async () => {
     const response = await patch(people.officer, people.officer, {
@@ -537,6 +605,11 @@ interface JsonProfile extends JsonEntry {
   manager: { employeeId: string; firstName: string; lastName: string; jobTitle: string } | null;
 }
 
+interface JsonColleague extends JsonEntry {
+  manager: { employeeId: string; firstName: string; lastName: string } | null;
+  reports: { employeeId: string; firstName: string; lastName: string }[];
+}
+
 interface JsonDirectory {
   today: string;
   people: JsonEntry[];
@@ -593,6 +666,15 @@ async function profileAs(employeeId: string): Promise<JsonProfile> {
   expect(response.status).toBe(200);
 
   return (await response.json()) as JsonProfile;
+}
+
+/** Somebody, signed in as `as`, reading `whose` profile. */
+async function colleagueAs(as: string, whose: string): Promise<JsonColleague> {
+  const response = await get(`/api/people/${whose}/profile`, as);
+
+  expect(response.status).toBe(200);
+
+  return (await response.json()) as JsonColleague;
 }
 
 /** Somebody, signed in as `as`, changing the profile on `whose` record. */

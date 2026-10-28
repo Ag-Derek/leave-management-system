@@ -4,10 +4,12 @@ import { type Request, type Response, Router } from 'express';
 import { actorOf } from '../../core/http/identify.js';
 import type {
   ChartPerson,
+  ColleagueProfile,
   DepartmentInTheDirectory,
   Directory,
   DirectoryEntry,
   MyProfile,
+  PersonInBrief,
   StaffChart,
 } from './directory.js';
 import type { DirectoryService } from './directory.service.js';
@@ -49,6 +51,19 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
       .catch(next);
   });
 
+  /** A colleague's profile, read only. 404 for a leaver and for an id that is nobody's. */
+  routes.get(
+    '/people/:employeeId/profile',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void directory
+        .colleague(actorOf(response), request.params.employeeId)
+        .then((found) => {
+          response.json(colleagueAsJson(found));
+        })
+        .catch(next);
+    },
+  );
+
   /**
    * Changing the self-service fields on a record. Only its owner may, and anybody else is
    * answered 403 and logged; the id is in the path so that the refusal has something to
@@ -76,15 +91,25 @@ function profileAsJson(mine: MyProfile): unknown {
     ...(entryAsJson(mine) as object),
     /** Ten characters. NFR DAT 03. */
     startDate: mine.startDate,
-    manager:
-      mine.manager === null
-        ? null
-        : {
-            employeeId: mine.manager.employeeId,
-            firstName: mine.manager.firstName,
-            lastName: mine.manager.lastName,
-            jobTitle: mine.manager.jobTitle,
-          },
+    manager: mine.manager === null ? null : briefAsJson(mine.manager),
+  };
+}
+
+/** A colleague's profile. No start date: that is on their own profile only. */
+function colleagueAsJson(colleague: ColleagueProfile): unknown {
+  return {
+    ...(entryAsJson(colleague) as object),
+    manager: colleague.manager === null ? null : briefAsJson(colleague.manager),
+    reports: colleague.reports.map(briefAsJson),
+  };
+}
+
+function briefAsJson(person: PersonInBrief): unknown {
+  return {
+    employeeId: person.employeeId,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    jobTitle: person.jobTitle,
   };
 }
 
