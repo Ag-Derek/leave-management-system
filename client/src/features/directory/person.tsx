@@ -9,11 +9,14 @@ export function Today({
   person,
   today,
   inWords = 'In',
+  awayWords = 'Back',
 }: {
   person: Pick<DirectoryPerson, 'backOn'>;
   today: string;
   /** What "in" is called where it stands alone, as "In today" does on a profile. */
   inWords?: string;
+  /** What comes before the day they are back, as "On leave, back" does on a profile. */
+  awayWords?: string;
 }) {
   if (person.backOn === null) {
     return <span className="presence">{inWords}</span>;
@@ -23,7 +26,11 @@ export function Today({
   const when =
     person.backOn.slice(0, 4) === today.slice(0, 4) ? weekday(person.backOn) : day(person.backOn);
 
-  return <span className="tag is-away">Back {when}</span>;
+  return (
+    <span className="tag is-away">
+      {awayWords} {when}
+    </span>
+  );
 }
 
 /** Initials in a circle. `aria-hidden`; the name is beside it. */

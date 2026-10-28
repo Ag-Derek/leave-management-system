@@ -13,6 +13,7 @@ import {
   entryFor,
   isCurrentOn,
   type MyProfile,
+  reportingLineOf,
   type StaffChart,
   staffChartFor,
   type WhoIsAway,
@@ -73,14 +74,18 @@ export class DirectoryService {
   }
 
   /**
-   * One person's profile: anybody current to anybody, and anybody else to HR alone.
+   * One person's profile, with their reporting line: anybody current to anybody, and anybody
+   * else to HR alone.
    *
    * An id that is nobody and a leaver asked for by somebody who is not HR get the same 404,
-   * so the address cannot be used to learn who has left.
+   * so the address cannot be used to learn who has left. Found in the list rather than by id,
+   * which also finds their manager and reports, and means an id that is not a number, or is
+   * too large for one, is nobody rather than a query that fails.
    */
   async person(actor: Actor, employeeId: string): Promise<DirectoryProfile> {
     const today = this.today();
-    const employee = await this.employees.findById(employeeId);
+    const everybody = await this.employees.list();
+    const employee = everybody.find((one) => one.id === employeeId);
 
     if (employee === undefined) {
       this.guard.enforce(directoryPolicy.read(actor));
@@ -105,6 +110,7 @@ export class DirectoryService {
         away.find((one) => one.employeeId === employee.id)?.backOn,
         profiles[0],
       ),
+      ...reportingLineOf(employee, everybody, today),
       notListed:
         reason === null
           ? null
@@ -113,8 +119,7 @@ export class DirectoryService {
   }
 
   /**
-   * The reader's own profile, with what only they are shown of it: when they started and who
-   * they report to.
+   * The reader's own profile, with what only they are shown of it: when they started.
    */
   async mine(actor: Actor): Promise<MyProfile> {
     this.guard.enforce(directoryPolicy.read(actor));

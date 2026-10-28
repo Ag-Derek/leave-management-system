@@ -6,6 +6,7 @@ import {
   type ChartPerson,
   directoryFor,
   isCurrentOn,
+  reportingLineOf,
   staffChartFor,
   whyNotListed,
 } from '../../src/apps/directory/directory.js';
@@ -319,6 +320,76 @@ describe('the organisation chart', () => {
       [top.employeeId]: Object.assign({}, ...top.reports.map(shape)) as Record<string, unknown>,
     };
   }
+});
+
+describe('a reporting line on a profile', () => {
+  const organisation = [
+    person({ id: 'ama', firstName: 'Ama', lastName: 'Owusu', jobTitle: 'Chief Executive' }),
+    person({ id: 'efua', firstName: 'Efua', lastName: 'Darko', managerId: 'ama' }),
+    person({ id: 'kofi', firstName: 'Kofi', lastName: 'Addo', managerId: 'efua' }),
+    person({ id: 'akosua', firstName: 'Akosua', lastName: 'Asante', managerId: 'efua' }),
+    person({
+      id: 'kojo',
+      firstName: 'Kojo',
+      lastName: 'Antwi',
+      managerId: 'efua',
+      employmentStatus: 'TERMINATED',
+      exitDate: '2026-07-31',
+    }),
+  ];
+
+  const lineOf = (id: string, everybody: Employee[] = organisation) =>
+    reportingLineOf(everybody.find((one) => one.id === id) as Employee, everybody, TODAY);
+
+  it('names who they report to, and who reports to them by surname, leavers left out', () => {
+    const efua = lineOf('efua');
+
+    expect(efua.manager).toEqual({
+      employeeId: 'ama',
+      firstName: 'Ama',
+      lastName: 'Owusu',
+      jobTitle: 'Chief Executive',
+    });
+    expect(efua.reports.map((one) => one.employeeId)).toEqual(['kofi', 'akosua']);
+  });
+
+  it('has no manager for the head of the organisation, and no reports for somebody with none', () => {
+    expect(lineOf('ama').manager).toBeNull();
+    expect(lineOf('kofi').reports).toEqual([]);
+  });
+
+  it('has no manager where the manager has left', () => {
+    const left = organisation.map((one) =>
+      one.id === 'efua'
+        ? { ...one, employmentStatus: 'TERMINATED' as const, exitDate: '2026-07-31' }
+        : one,
+    );
+
+    expect(lineOf('kofi', left).manager).toBeNull();
+  });
+
+  /* The joiner and leaver rules: marked TERMINATED ahead of the day, still here until it. */
+  it('keeps a manager marked TERMINATED whose last day is still to come', () => {
+    const leaving = organisation.map((one) =>
+      one.id === 'efua'
+        ? { ...one, employmentStatus: 'TERMINATED' as const, exitDate: '2026-12-31' }
+        : one,
+    );
+
+    expect(lineOf('kofi', leaving).manager?.employeeId).toBe('efua');
+  });
+
+  it('still draws a line for somebody who has left, for HR', () => {
+    expect(lineOf('kojo').manager?.employeeId).toBe('efua');
+  });
+
+  it('carries a name and a job title of each person, and no employee number', () => {
+    const wire = JSON.stringify(lineOf('efua'));
+
+    expect(wire).not.toContain('startDate');
+    expect(wire).not.toContain('RH-');
+    expect(wire).not.toContain('managerId');
+  });
 });
 
 describe('who may read the organisation chart', () => {

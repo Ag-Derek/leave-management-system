@@ -9,6 +9,7 @@ import type {
   DirectoryEntry,
   DirectoryProfile,
   MyProfile,
+  PersonInBrief,
   StaffChart,
 } from './directory.js';
 import type { DirectoryService } from './directory.service.js';
@@ -90,15 +91,16 @@ function profileAsJson(mine: MyProfile): unknown {
     ...(entryAsJson(mine) as object),
     /** Ten characters. NFR DAT 03. */
     startDate: mine.startDate,
-    manager:
-      mine.manager === null
-        ? null
-        : {
-            employeeId: mine.manager.employeeId,
-            firstName: mine.manager.firstName,
-            lastName: mine.manager.lastName,
-            jobTitle: mine.manager.jobTitle,
-          },
+    manager: mine.manager === null ? null : briefAsJson(mine.manager),
+  };
+}
+
+function briefAsJson(person: PersonInBrief): unknown {
+  return {
+    employeeId: person.employeeId,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    jobTitle: person.jobTitle,
   };
 }
 
@@ -132,10 +134,15 @@ function entryAsJson(entry: DirectoryEntry): unknown {
   };
 }
 
-/** One person's profile. `notListed` is only ever non null for HR. */
+/**
+ * One person's profile. `notListed` is only ever non null for HR. No start date for anybody
+ * current: that is on their own profile only.
+ */
 function personProfileAsJson(person: DirectoryProfile): unknown {
   return {
     ...(entryAsJson(person) as object),
+    manager: person.manager === null ? null : briefAsJson(person.manager),
+    reports: person.reports.map(briefAsJson),
     notListed:
       person.notListed === null
         ? null

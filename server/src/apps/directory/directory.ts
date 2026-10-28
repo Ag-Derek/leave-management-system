@@ -52,9 +52,8 @@ export interface DirectoryEntry {
 /**
  * Somebody's own profile, as they see it to edit it.
  *
- * What everybody sees of them, and the HR-kept facts only they are shown: when they started,
- * and who they report to. A colleague's manager is drawn on the chart rather than written on
- * their profile, so it is named here for nobody but the person themselves.
+ * What everybody sees of them, when they started, which only they are shown, and who they
+ * report to.
  */
 export interface MyProfile extends DirectoryEntry {
   startDate: CalendarDate;
@@ -66,14 +65,33 @@ export interface MyProfile extends DirectoryEntry {
   } | null;
 }
 
+/** Somebody named on a profile: their manager, or one of their reports. */
+export interface PersonInBrief {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+}
+
+/** Who somebody reports to and who reports to them, among the people current on a day. */
+export interface ReportingLine {
+  /** Null for the head of the organisation, or where their manager is no longer current. */
+  manager: PersonInBrief | null;
+  /** By surname. */
+  reports: PersonInBrief[];
+}
+
 /**
  * One person's profile, as `#/directory/<id>` asks for it.
  *
  * Anybody current, to anybody. Somebody who is not current only to HR, with why and the two
  * dates that decide it; to anybody else they are a 404, the same answer as an id that is
  * nobody.
+ *
+ * Their reporting line is on it too, which the chart already shows every employee. When they
+ * started is not, for anybody current; that stays on their own profile.
  */
-export interface DirectoryProfile extends DirectoryEntry {
+export interface DirectoryProfile extends DirectoryEntry, ReportingLine {
   notListed: {
     reason: NotListedReason;
     startDate: CalendarDate;
@@ -173,6 +191,36 @@ export function directoryFor(facts: DirectoryFacts): Directory {
     today: facts.today,
     people,
     departments: [...listed.values()].sort((a, b) => names.compare(a.name, b.name)),
+  };
+}
+
+/**
+ * Where somebody sits: their manager and their reports, drawn only from the people current on
+ * the day, as the chart is. Somebody who is not current themselves still gets a line, for HR.
+ */
+export function reportingLineOf(
+  employee: Employee,
+  everybody: readonly Employee[],
+  today: CalendarDate,
+): ReportingLine {
+  const current = everybody.filter((one) => isCurrentOn(one, today));
+  const manager = current.find((one) => one.id === employee.managerId);
+
+  return {
+    manager: manager === undefined ? null : inBrief(manager),
+    reports: current
+      .filter((one) => one.managerId === employee.id)
+      .map(inBrief)
+      .sort(bySurname),
+  };
+}
+
+function inBrief(employee: Employee): PersonInBrief {
+  return {
+    employeeId: employee.id,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    jobTitle: employee.jobTitle,
   };
 }
 

@@ -14,8 +14,9 @@ export const directoryPolicy = {
    *
    * `employeePolicy.list` is HR's, and this is not a way round it: the directory is a
    * projection that carries a name, a job title, a department, a work address and a return
-   * date, and can assemble nothing else. No manager, no employee number, no dates of
-   * employment, no kind of leave.
+   * date, and can assemble nothing else. No employee number, no dates of employment, no kind
+   * of leave. A colleague's profile adds their manager and reports, which the chart below
+   * already shows everybody.
    *
    * Refused for an actor with no employee behind it. The directory is for the people in it,
    * and nothing that runs unattended has a reason to read it.

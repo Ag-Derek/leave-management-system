@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
-  ApiError,
   type Directory,
   type DirectoryPerson,
-  type DirectoryProfile,
-  directoryPerson,
   isNotSignedIn,
   type Me,
   type MyProfile,
   staffDirectory,
 } from '../../api';
-import { day } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { AccountMenu } from './AccountMenu';
+import { ColleagueProfilePage } from './ColleagueProfilePage';
 import { MyProfilePage } from './MyProfilePage';
 import { OrgChart } from './OrgChart';
 import { Avatar, chartAddress, fold, profileAddress, Today } from './person';
@@ -33,7 +30,8 @@ export interface BackTo {
  *
  * The list is fetched once and searched here, so typing never waits on the server. The
  * search stays put while somebody looks at a profile and comes back, because this one
- * component draws both.
+ * component draws both. A profile is fetched on its own, for the reporting line the list
+ * does not carry.
  */
 export function DirectoryPage({
   me,
@@ -196,13 +194,9 @@ export function DirectoryPage({
             onSignedOut={onSignedOut}
           />
         ) : (
-          <Profile
-            personId={address.personId}
-            listed={directory?.people.find((one) => one.employeeId === personId)}
-            directory={directory}
-            loading={loading}
-            problem={problem}
-            onRetry={load}
+          <ColleagueProfilePage
+            employeeId={address.personId}
+            today={directory?.today ?? new Date().toISOString().slice(0, 10)}
             back={back}
             onSignedOut={onSignedOut}
           />
@@ -398,191 +392,6 @@ function Loading() {
           <span className="skeleton is-line" />
         </div>
       ))}
-    </div>
-  );
-}
-
-/**
- * One person: from the list the table drew when they are in it, and otherwise asked of the
- * server, which answers HR about somebody who has left or not yet started and answers anybody
- * else 404.
- */
-function Profile({
-  personId,
-  listed,
-  directory,
-  loading,
-  problem,
-  onRetry,
-  back,
-  onSignedOut,
-}: {
-  personId: string;
-  listed: DirectoryPerson | undefined;
-  directory: Directory | undefined;
-  loading: boolean;
-  problem: Problem | undefined;
-  onRetry: () => void;
-  back: BackTo;
-  onSignedOut: () => void;
-}) {
-  /* What the server said about somebody not in the list, and for whom it said it. */
-  const [asked, setAsked] = useState<
-    { personId: string; answer: DirectoryProfile | 'nobody' | Problem } | undefined
-  >(undefined);
-
-  const unlisted = directory !== undefined && listed === undefined;
-
-  useEffect(() => {
-    if (!unlisted) {
-      return;
-    }
-
-    let current = true;
-
-    directoryPerson(personId)
-      .then((found) => {
-        if (current) setAsked({ personId, answer: found });
-      })
-      .catch((error: unknown) => {
-        if (isNotSignedIn(error)) {
-          onSignedOut();
-          return;
-        }
-
-        if (current) {
-          setAsked({
-            personId,
-            answer:
-              error instanceof ApiError && error.status === 404 ? 'nobody' : problemFrom(error),
-          });
-        }
-      });
-
-    return () => {
-      current = false;
-    };
-  }, [unlisted, personId, onSignedOut]);
-
-  const answer = asked?.personId === personId ? asked.answer : undefined;
-  const fetched =
-    typeof answer === 'object' && 'employeeId' in answer ? (answer as DirectoryProfile) : undefined;
-  const failed =
-    typeof answer === 'object' && !('employeeId' in answer) ? (answer as Problem) : undefined;
-
-  const person: DirectoryPerson | undefined = listed ?? fetched;
-  const notListed = listed === undefined ? (fetched?.notListed ?? null) : null;
-
-  return (
-    <>
-      <a className="directory-back" href={back.href}>
-        <Icon name="back" />
-        {back.label}
-      </a>
-
-      {problem === undefined ? null : (
-        <Notice problem={problem} retrying={loading} onRetry={onRetry} />
-      )}
-
-      {failed === undefined ? null : <Notice problem={failed} />}
-
-      {directory === undefined || (unlisted && answer === undefined) ? (
-        problem === undefined ? (
-          <Loading />
-        ) : null
-      ) : person === undefined ? (
-        answer === 'nobody' ? (
-          <>
-            <h2>Not in the directory</h2>
-            <p className="notice plain">
-              Nobody currently at Remat has that address. They may have left, or the link may be out
-              of date.
-            </p>
-          </>
-        ) : null
-      ) : (
-        <section className="directory-profile">
-          {notListed === null ? null : <NotListed notListed={notListed} />}
-
-          <div className="directory-profile-head">
-            <Avatar person={person} />
-            <div>
-              <h2>
-                {person.firstName} {person.lastName}
-              </h2>
-              {person.jobTitle === null ? null : <p className="muted">{person.jobTitle}</p>}
-              {/* Only somebody current is on the chart. */}
-              {notListed === null ? (
-                <a className="view-in-chart" href={chartAddress(person)}>
-                  <Icon name="stage" />
-                  View in org chart
-                </a>
-              ) : null}
-            </div>
-          </div>
-
-          <dl>
-            <div>
-              <dt>Department</dt>
-              <dd>{person.department.name}</dd>
-            </div>
-            <div>
-              <dt>Work email</dt>
-              <dd>
-                <a href={`mailto:${person.workEmail}`}>{person.workEmail}</a>
-              </dd>
-            </div>
-            {person.workMobile === null ? null : (
-              <div>
-                <dt>Work mobile</dt>
-                <dd>
-                  <a href={`tel:${person.workMobile.replace(/[^\d+]/g, '')}`}>
-                    {person.workMobile}
-                  </a>
-                </dd>
-              </div>
-            )}
-            {person.description === null ? null : (
-              <div>
-                <dt>What I do</dt>
-                <dd className="directory-description">{person.description}</dd>
-              </div>
-            )}
-            {notListed === null ? (
-              <div>
-                <dt>Today</dt>
-                <dd>
-                  <Today person={person} today={directory.today} />
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-        </section>
-      )}
-    </>
-  );
-}
-
-/**
- * Why HR is looking at somebody the directory does not list, and where their records are.
- * Only HR is ever answered such a profile, so only HR ever sees this.
- */
-function NotListed({ notListed }: { notListed: NonNullable<DirectoryProfile['notListed']> }) {
-  return (
-    <div className="notice warning directory-not-listed" role="note">
-      <p>
-        {notListed.reason === 'LEFT'
-          ? `Left. Their last day was ${day(notListed.exitDate ?? notListed.startDate)}.`
-          : notListed.reason === 'NOT_STARTED'
-            ? `Not started yet. They join on ${day(notListed.startDate)}.`
-            : 'Suspended.'}{' '}
-        Colleagues cannot see this profile; you can because you keep staff records.
-      </p>
-      {notListed.reason === 'LEFT' ? (
-        <p>
-          <a href="#/leavers">Final leave statement</a> · <a href="#/staff-leave">Leave history</a>
-        </p>
-      ) : null}
     </div>
   );
 }

@@ -2047,15 +2047,18 @@ export interface DirectoryPerson {
   description: string | null;
 }
 
+/** Somebody named on a profile: a manager, or one of their reports. */
+export interface PersonInBrief {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+}
+
 /** My own profile, with the HR-kept facts only I am shown. */
 export interface MyProfile extends DirectoryPerson {
   startDate: string;
-  manager: {
-    employeeId: string;
-    firstName: string;
-    lastName: string;
-    jobTitle: string | null;
-  } | null;
+  manager: PersonInBrief | null;
 }
 
 /** What I may change on my own record. An absent field is left alone; empty clears it. */
@@ -2101,6 +2104,10 @@ export type NotListedReason = 'LEFT' | 'NOT_STARTED' | 'SUSPENDED';
  * with why; to anybody else the server answers 404.
  */
 export interface DirectoryProfile extends DirectoryPerson {
+  /** Null for the head of the organisation, or where their manager is no longer here. */
+  manager: PersonInBrief | null;
+  /** The people here today who report to them, by surname. */
+  reports: PersonInBrief[];
   notListed: { reason: NotListedReason; startDate: string; exitDate: string | null } | null;
 }
 
