@@ -3,6 +3,11 @@
 import type { CalendarDate } from '../../core/calendar/time.js';
 import type { Department } from '../../core/organisation/department/department.js';
 import type { Employee, EmployeeProfile } from '../../core/organisation/employee/employee.js';
+import {
+  buildOrgChart,
+  type OrgChartNode,
+  type RootStanding,
+} from '../../core/organisation/employee/org-chart.js';
 
 /** Somebody on agreed leave today, and the first day they are expected back. */
 export interface AwayToday {
@@ -47,8 +52,8 @@ export interface DirectoryEntry {
  * Somebody's own profile, as they see it to edit it.
  *
  * What everybody sees of them, and the HR-kept facts only they are shown: when they started,
- * and who they report to. A colleague's manager is not in the directory, so it is not here
- * for anybody but the person themselves.
+ * and who they report to. A colleague's manager is drawn on the chart rather than written on
+ * their profile, so it is named here for nobody but the person themselves.
  */
 export interface MyProfile extends DirectoryEntry {
   startDate: CalendarDate;
@@ -158,5 +163,88 @@ export function directoryFor(facts: DirectoryFacts): Directory {
     today: facts.today,
     people,
     departments: [...listed.values()].sort((a, b) => names.compare(a.name, b.name)),
+  };
+}
+
+/* ------------------------------------------------------------------ the chart */
+
+/** One person on the staff chart, and the people who report to them. */
+export interface ChartPerson {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+  reports: ChartPerson[];
+}
+
+/** The top of one line on the chart, and why it starts there. */
+export interface ChartLine {
+  /**
+   * `HEAD_OF_THE_ORGANISATION` for the one line that should exist. Any other is a reporting
+   * line HR has to put right: a second person with no manager, a manager who is not current,
+   * or a line that goes round in a circle.
+   */
+  standing: RootStanding;
+  top: ChartPerson;
+}
+
+/**
+ * The reporting structure, as every member of staff may see it.
+ *
+ * HR's chart, `EmployeeService.orgChart()`, keeps leavers on it so that a manager who has
+ * left is a name to find. This one is drawn from the people who are current, as the
+ * directory is, and the same fault shows up differently: the team of a manager who has left
+ * becomes a line of its own, flagged.
+ */
+export interface StaffChart {
+  /** The day "current" was judged on. */
+  today: CalendarDate;
+  /** The head of the organisation first, then any line that should not stand on its own. */
+  lines: ChartLine[];
+  /** Everybody on it, which is everybody current: the builder places every one of them. */
+  total: number;
+}
+
+/** The chart, from the manager relationships of the people who are current. */
+export function staffChartFor(employees: readonly Employee[], today: CalendarDate): StaffChart {
+  const chart = buildOrgChart(employees.filter((employee) => isCurrentOn(employee, today)));
+
+  return {
+    today,
+    lines: chart.roots.map((root) => ({ standing: root.standing, top: branchFrom(root.node) })),
+    total: chart.total,
+  };
+}
+
+/**
+ * A branch of HR's chart, carrying only what the directory shows of each person.
+ *
+ * An explicit stack rather than recursion, for the reason the builder has one.
+ */
+function branchFrom(top: OrgChartNode): ChartPerson {
+  const root = personOnTheChart(top.employee);
+  const pending: [OrgChartNode, ChartPerson][] = [[top, root]];
+
+  while (pending.length > 0) {
+    const [node, person] = pending.pop() as [OrgChartNode, ChartPerson];
+
+    for (const report of node.reports) {
+      const drawn = personOnTheChart(report.employee);
+
+      person.reports.push(drawn);
+      pending.push([report, drawn]);
+    }
+  }
+
+  return root;
+}
+
+function personOnTheChart(employee: Employee): ChartPerson {
+  return {
+    employeeId: employee.id,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    jobTitle: employee.jobTitle,
+    reports: [],
   };
 }

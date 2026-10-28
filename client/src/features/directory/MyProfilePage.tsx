@@ -3,7 +3,8 @@ import { changeMyProfile, isNotSignedIn, type MyProfile, myProfile } from '../..
 import { monthAndYear } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
-import { Avatar, Today } from './person';
+import type { BackTo } from './DirectoryPage';
+import { Avatar, chartAddress, Today } from './person';
 import { DESCRIPTION_LIMIT, descriptionProblem, lengthOf, workMobileProblem } from './rules';
 
 /**
@@ -18,11 +19,14 @@ import { DESCRIPTION_LIMIT, descriptionProblem, lengthOf, workMobileProblem } fr
  */
 export function MyProfilePage({
   today,
+  back,
   onSaved,
   onSignedOut,
 }: {
   /** The day the directory judged "in" and "away" on. */
   today: string;
+  /** The view this was opened from. */
+  back: BackTo;
   /** So the list behind this page shows the change without being fetched again. */
   onSaved: (mine: MyProfile) => void;
   onSignedOut: () => void;
@@ -56,9 +60,9 @@ export function MyProfilePage({
 
   return (
     <>
-      <a className="directory-back" href="#/directory">
+      <a className="directory-back" href={back.href}>
         <Icon name="back" />
-        Back to directory
+        {back.label}
       </a>
 
       {loadProblem === undefined ? null : (
@@ -189,6 +193,10 @@ function Editor({
           <p>
             <Today person={saved} today={today} inWords="In today" />
           </p>
+          <a className="view-in-chart" href={chartAddress(saved)}>
+            <Icon name="stage" />
+            View in org chart
+          </a>
         </div>
       </div>
 

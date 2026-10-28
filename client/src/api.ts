@@ -2093,6 +2093,40 @@ export async function staffDirectory(): Promise<Directory> {
   return request<Directory>('GET', '/api/directory');
 }
 
+/** One person on the organisation chart, and the people who report to them. */
+export interface ChartPerson {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+  /** By surname. */
+  reports: ChartPerson[];
+}
+
+/**
+ * Why a line on the chart starts where it does. Only the head's is as it should be; any other
+ * is a reporting line HR has to put right.
+ */
+export type ChartStanding =
+  'HEAD_OF_THE_ORGANISATION' | 'SECOND_HEAD' | 'MANAGER_NOT_ON_THE_CHART' | 'REPORTING_LINE_LOOPS';
+
+export interface ChartLine {
+  standing: ChartStanding;
+  top: ChartPerson;
+}
+
+export interface StaffChart {
+  today: string;
+  /** The head of the organisation first, then any line that should not stand on its own. */
+  lines: ChartLine[];
+  total: number;
+}
+
+/** Who reports to whom among everybody current, built afresh from the records on each ask. */
+export async function staffChart(): Promise<StaffChart> {
+  return request<StaffChart>('GET', '/api/directory/chart');
+}
+
 /**
  * Replacing your own password. NFR SEC 01.
  *

@@ -26,6 +26,23 @@ export const directoryPolicy = {
   },
 
   /**
+   * Reading the organisation chart, which is every employee's too.
+   *
+   * It says who reports to whom, which the directory's list does not, and that is the point
+   * of it: somebody who can see their own line can see when it is wrong, and the same field
+   * decides where their leave requests go. It carries what the list does of each person and
+   * less — a name and a job title — and only the people who are current.
+   *
+   * HR's chart, `employeePolicy.chart`, is a different read: every record, leavers and
+   * employee numbers included, and it stays HR's.
+   */
+  chart(actor: Actor): Decision {
+    return actor.employeeId !== null
+      ? about.allow(actor, 'chart')
+      : about.refuse(actor, 'chart', null, 'has no employee record behind it');
+  },
+
+  /**
    * Changing the photo, work mobile and description on a record, which is its owner's alone.
    *
    * Not HR's either: HR keeps everything else on the record, and these three are the

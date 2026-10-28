@@ -3,10 +3,12 @@
 import { type Request, type Response, Router } from 'express';
 import { actorOf } from '../../core/http/identify.js';
 import type {
+  ChartPerson,
   DepartmentInTheDirectory,
   Directory,
   DirectoryEntry,
   MyProfile,
+  StaffChart,
 } from './directory.js';
 import type { DirectoryService } from './directory.service.js';
 
@@ -23,6 +25,16 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
       .read(actorOf(response))
       .then((found) => {
         response.json(directoryAsJson(found));
+      })
+      .catch(next);
+  });
+
+  /** Who reports to whom, among everybody at the company today. */
+  routes.get('/directory/chart', (_request: Request, response: Response, next) => {
+    void directory
+      .chart(actorOf(response))
+      .then((chart) => {
+        response.json(chartAsJson(chart));
       })
       .catch(next);
   });
@@ -103,6 +115,32 @@ function entryAsJson(entry: DirectoryEntry): unknown {
     /** What they keep themselves. Null where they have said nothing. */
     workMobile: entry.workMobile,
     description: entry.description,
+  };
+}
+
+/** The chart, field by field, for the reason the directory is. */
+function chartAsJson(chart: StaffChart): unknown {
+  return {
+    today: chart.today,
+    lines: chart.lines.map((line) => ({ standing: line.standing, top: personAsJson(line.top) })),
+    total: chart.total,
+  };
+}
+
+/**
+ * One person and everybody under them.
+ *
+ * Recursive where the builder is not: the builder is handed whatever the table holds and has
+ * to survive a loop, which is infinitely deep until something bounds it. By here every loop is
+ * broken, and the depth is the organisation's.
+ */
+function personAsJson(person: ChartPerson): unknown {
+  return {
+    employeeId: person.employeeId,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    jobTitle: person.jobTitle,
+    reports: person.reports.map(personAsJson),
   };
 }
 
