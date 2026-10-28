@@ -2093,6 +2093,24 @@ export async function staffDirectory(): Promise<Directory> {
   return request<Directory>('GET', '/api/directory');
 }
 
+/** Why somebody with a record is not in the directory today. */
+export type NotListedReason = 'LEFT' | 'NOT_STARTED' | 'SUSPENDED';
+
+/**
+ * One person's profile, asked for by id. Somebody who is not current comes back to HR alone,
+ * with why; to anybody else the server answers 404.
+ */
+export interface DirectoryProfile extends DirectoryPerson {
+  notListed: { reason: NotListedReason; startDate: string; exitDate: string | null } | null;
+}
+
+export async function directoryPerson(employeeId: string): Promise<DirectoryProfile> {
+  return request<DirectoryProfile>(
+    'GET',
+    `/api/directory/people/${encodeURIComponent(employeeId)}`,
+  );
+}
+
 /** One person on the organisation chart, and the people who report to them. */
 export interface ChartPerson {
   employeeId: string;

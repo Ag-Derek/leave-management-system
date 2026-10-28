@@ -692,6 +692,20 @@ a.portal-app:hover {
   margin: 0;
 }
 
+/* HR looking at somebody the directory does not list: why, above everything else. */
+.directory-profile .directory-not-listed {
+  margin: 0 0 var(--gap-lg);
+}
+
+.directory-not-listed p + p {
+  margin-top: 0.4rem;
+}
+
+.directory-not-listed a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* Kept as written, line breaks and all. */
 .directory-description {
   white-space: pre-line;

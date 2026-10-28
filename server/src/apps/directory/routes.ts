@@ -7,6 +7,7 @@ import type {
   DepartmentInTheDirectory,
   Directory,
   DirectoryEntry,
+  DirectoryProfile,
   MyProfile,
   StaffChart,
 } from './directory.js';
@@ -38,6 +39,19 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
       })
       .catch(next);
   });
+
+  /** One person: anybody current to anybody, and a leaver to HR alone. Otherwise 404. */
+  routes.get(
+    '/directory/people/:employeeId',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void directory
+        .person(actorOf(response), request.params.employeeId)
+        .then((person) => {
+          response.json(personProfileAsJson(person));
+        })
+        .catch(next);
+    },
+  );
 
   /** My own profile, with the HR-kept facts only I am shown. `/me` names the reader. */
   routes.get('/me/profile', (_request: Request, response: Response, next) => {
@@ -115,6 +129,22 @@ function entryAsJson(entry: DirectoryEntry): unknown {
     /** What they keep themselves. Null where they have said nothing. */
     workMobile: entry.workMobile,
     description: entry.description,
+  };
+}
+
+/** One person's profile. `notListed` is only ever non null for HR. */
+function personProfileAsJson(person: DirectoryProfile): unknown {
+  return {
+    ...(entryAsJson(person) as object),
+    notListed:
+      person.notListed === null
+        ? null
+        : {
+            reason: person.notListed.reason,
+            /** Ten characters each. NFR DAT 03. */
+            startDate: person.notListed.startDate,
+            exitDate: person.notListed.exitDate,
+          },
   };
 }
 

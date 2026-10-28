@@ -46,6 +46,8 @@ import { NotificationService } from '../../src/apps/leave/notification/notificat
 import { SignInService } from '../../src/core/identity/sign-in/sign-in.service.js';
 import { AwayTodayService } from '../../src/apps/leave/team/away-today.service.js';
 import { DirectoryService } from '../../src/apps/directory/directory.service.js';
+import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
+import { LeaverReports } from '../../src/core/organisation/employee/leaver-reports.job.js';
 import type { Directory } from '../../src/apps/directory/directory.js';
 import { recordingMailer } from '../support/recording-mailer.js';
 import { recordingDenials } from '../support/recording-denials.js';
@@ -266,6 +268,170 @@ describe('who is in it', () => {
 
   it('dates today as ten characters', async () => {
     expect((await directoryAs(people.officer)).today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('joiners and leavers', () => {
+  it('lists a joiner from their start date and not before', async () => {
+    await admin.query("UPDATE employee SET start_date = '2099-01-04' WHERE id = $1", [
+      people.partTimer,
+    ]);
+
+    const directory = await directoryAs(people.officer);
+    const chart = await chartAs(people.officer);
+
+    expect(directory.people.map((one) => one.employeeId)).not.toContain(people.partTimer);
+    expect(JSON.stringify(chart)).not.toContain(`"${people.partTimer}"`);
+    expect((await get(`/api/directory/people/${people.partTimer}`, people.officer)).status).toBe(
+      404,
+    );
+  });
+
+  /* HR doing the paperwork before somebody goes, which checkDatesAgree allows on purpose. */
+  it('keeps a leaver already marked TERMINATED listed until their exit date passes', async () => {
+    await admin.query(
+      `UPDATE employee SET employment_status = 'TERMINATED', exit_date = '2099-12-31'
+        WHERE id = $1`,
+      [people.partTimer],
+    );
+
+    const directory = await directoryAs(people.officer);
+
+    expect(directory.people.map((one) => one.employeeId)).toContain(people.partTimer);
+    expect(JSON.stringify(await chartAs(people.officer))).toContain(`"${people.partTimer}"`);
+    expect((await get(`/api/directory/people/${people.partTimer}`, people.officer)).status).toBe(
+      200,
+    );
+  });
+
+  it('answers a current colleague’s profile to anybody', async () => {
+    const response = await get(`/api/directory/people/${people.partTimer}`, people.officer);
+    const body = (await response.json()) as JsonEntry & { notListed: unknown };
+
+    expect(response.status).toBe(200);
+    expect(body.firstName).toBe('Abena');
+    expect(body.notListed).toBeNull();
+  });
+
+  it('answers a leaver’s profile with a 404 to anybody but HR, and logs the attempt', async () => {
+    const response = await get(`/api/directory/people/${people.leaver}`, people.officer);
+
+    expect(response.status).toBe(404);
+    expect(denials.last()).toMatchObject({
+      employeeId: people.officer,
+      resource: 'directory',
+      action: 'readProfile',
+      subject: people.leaver,
+    });
+  });
+
+  it('and with the same 404 as an id that is nobody, so it cannot tell who has left', async () => {
+    const leaver = await get(`/api/directory/people/${people.leaver}`, people.officer);
+    const nobody = await get('/api/directory/people/999999', people.officer);
+
+    expect(nobody.status).toBe(404);
+    expect(await nobody.json()).toEqual(await leaver.json());
+  });
+
+  it('answers a leaver’s profile to HR, saying they have left and when', async () => {
+    const response = await get(`/api/directory/people/${people.leaver}`, people.hrOfficer);
+    const body = (await response.json()) as { notListed: { reason: string; exitDate: string } };
+
+    expect(response.status).toBe(200);
+    expect(body.notListed).toMatchObject({ reason: 'LEFT', exitDate: '2026-07-31' });
+  });
+
+  /* The story's third criterion. The record is hidden from the directory, not removed, and
+     the leave hanging off it is still HR's to read. */
+  it('keeps a leaver’s record and leave history, and HR can still read both', async () => {
+    await grant(people.officer, 20);
+    const { request } = await requests.submit(asAdwoa(), week('2026-09-07', '2026-09-11'));
+    await requests.approve(asKofi(), request.id);
+
+    await admin.query(
+      `UPDATE employee SET employment_status = 'TERMINATED', exit_date = '2026-10-02'
+        WHERE id = $1`,
+      [people.officer],
+    );
+
+    expect((await directoryAs(people.partTimer)).people.map((one) => one.employeeId)).not.toContain(
+      people.officer,
+    );
+
+    const { rows } = await admin.query('SELECT id FROM employee WHERE id = $1', [people.officer]);
+    expect(rows).toHaveLength(1);
+
+    const history = await get(`/api/employees/${people.officer}/requests`, people.hrOfficer);
+    expect(history.status).toBe(200);
+    expect(JSON.stringify(await history.json())).toContain(`"${request.id}"`);
+
+    expect((await get(`/api/leavers/${people.officer}`, people.hrOfficer)).status).toBe(200);
+    expect((await get(`/api/directory/people/${people.officer}`, people.hrOfficer)).status).toBe(
+      200,
+    );
+  });
+});
+
+describe('a leaver’s reports', () => {
+  function theJob(today: string): LeaverReports {
+    return new LeaverReports(
+      new EmployeeService(
+        new EmployeeRepository(db),
+        new DepartmentRepository(db),
+        new WorkPatternRepository(db),
+        guard,
+        requests,
+        { domains: ['rematholdings.com'] },
+      ),
+      () => today,
+    );
+  }
+
+  async function managerOf(employeeId: string): Promise<string | null> {
+    const { rows } = await admin.query<{ manager_id: string | null }>(
+      'SELECT manager_id::text FROM employee WHERE id = $1',
+      [employeeId],
+    );
+
+    return rows[0].manager_id;
+  }
+
+  /* Kofi Boateng, the team lead, leaves with Adwoa's week off still waiting on him. */
+  it('move to the manager above the leaver the day after their last day, leave and all', async () => {
+    await grant(people.officer, 20);
+    const { request } = await requests.submit(asAdwoa(), week('2026-11-02', '2026-11-06'));
+
+    await admin.query(
+      `UPDATE employee SET employment_status = 'TERMINATED', exit_date = '2026-10-01'
+        WHERE id = $1`,
+      [people.teamLead],
+    );
+
+    expect((await theJob('2026-10-01').run(system)).moved).toEqual([]);
+
+    const run = await theJob('2026-10-02').run(system);
+
+    expect(run.moved.map((move) => move.employeeId).sort()).toEqual(
+      [people.officer, people.partTimer].sort(),
+    );
+    expect(await managerOf(people.officer)).toBe(people.opsManager);
+    expect(await managerOf(people.partTimer)).toBe(people.opsManager);
+
+    /* The seeded leaver went in July, and keeps the manager she had. */
+    expect(await managerOf(people.leaver)).toBe(people.teamLead);
+
+    /* So nobody hangs off a manager who has gone. */
+    expect((await chartAs(people.officer)).lines).toHaveLength(1);
+
+    /* And the week off is the new manager's to decide. */
+    await expect(
+      requests.approve(
+        signedInAs(people.opsManager, { roles: ['EMPLOYEE'], isManager: true }),
+        request.id,
+      ),
+    ).resolves.toBeDefined();
+
+    expect((await theJob('2026-10-03').run(system)).moved).toEqual([]);
   });
 });
 

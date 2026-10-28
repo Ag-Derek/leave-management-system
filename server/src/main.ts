@@ -69,6 +69,11 @@ import {
 } from './apps/leave/notification/reminder.job.js';
 import { UndeliveredNotices } from './apps/leave/notification/delivery.job.js';
 import { summaryOf as summaryOfDelivery } from './apps/leave/notification/delivery.js';
+import { EmployeeService } from './core/organisation/employee/employee.service.js';
+import {
+  LeaverReports,
+  summaryOfLeaverReports,
+} from './core/organisation/employee/leaver-reports.job.js';
 
 loadEnv();
 
@@ -326,6 +331,10 @@ const reconciliation = new BalanceReconciliation(
 );
 const reminders = new DailyApproverReminders(leaveRequests, notifications);
 const undelivered = new UndeliveredNotices(notifications);
+/* The leave service is what a moved report's pending requests follow. FR 07. */
+const leaverReports = new LeaverReports(
+  new EmployeeService(employees, departments, patterns, guard, leaveRequests),
+);
 
 /** Runs one job and logs its summary, or its failure. Undefined means nothing worth logging. */
 async function runJob(job: string, work: () => Promise<string | undefined>): Promise<void> {
@@ -429,6 +438,14 @@ const reminderTimer = every(HOUR_MS, () =>
   }),
 );
 
+/* FR 06, FR 07. Hourly, so a leaver's reports move within the hour after their last day
+   rather than whenever a daily tick next falls. */
+const leaverTimer = every(HOUR_MS, () =>
+  runJob('leaver-reports', async () =>
+    summaryOfLeaverReports(await leaverReports.run(theSystem("the leavers' reports"))),
+  ),
+);
+
 /* FR 59. Every minute, the shortest backoff. */
 const deliveryTimer = every(MINUTE_MS, () =>
   runJob('notification-retry', async () => {
@@ -452,6 +469,7 @@ function shutDown(signal: string): void {
 
   clearInterval(dailyTimer);
   clearInterval(reminderTimer);
+  clearInterval(leaverTimer);
   clearInterval(deliveryTimer);
 
   server.close(() => {
