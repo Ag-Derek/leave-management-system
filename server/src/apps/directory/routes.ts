@@ -4,10 +4,10 @@ import { type Request, type Response, Router } from 'express';
 import { actorOf } from '../../core/http/identify.js';
 import type {
   ChartPerson,
-  ColleagueProfile,
   DepartmentInTheDirectory,
   Directory,
   DirectoryEntry,
+  DirectoryProfile,
   MyProfile,
   PersonInBrief,
   StaffChart,
@@ -41,6 +41,19 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
       .catch(next);
   });
 
+  /** One person: anybody current to anybody, and a leaver to HR alone. Otherwise 404. */
+  routes.get(
+    '/directory/people/:employeeId',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void directory
+        .person(actorOf(response), request.params.employeeId)
+        .then((person) => {
+          response.json(personProfileAsJson(person));
+        })
+        .catch(next);
+    },
+  );
+
   /** My own profile, with the HR-kept facts only I am shown. `/me` names the reader. */
   routes.get('/me/profile', (_request: Request, response: Response, next) => {
     void directory
@@ -50,19 +63,6 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
       })
       .catch(next);
   });
-
-  /** A colleague's profile, read only. 404 for a leaver and for an id that is nobody's. */
-  routes.get(
-    '/people/:employeeId/profile',
-    (request: Request<{ employeeId: string }>, response: Response, next) => {
-      void directory
-        .colleague(actorOf(response), request.params.employeeId)
-        .then((found) => {
-          response.json(colleagueAsJson(found));
-        })
-        .catch(next);
-    },
-  );
 
   /**
    * Changing the self-service fields on a record. Only its owner may, and anybody else is
@@ -92,15 +92,6 @@ function profileAsJson(mine: MyProfile): unknown {
     /** Ten characters. NFR DAT 03. */
     startDate: mine.startDate,
     manager: mine.manager === null ? null : briefAsJson(mine.manager),
-  };
-}
-
-/** A colleague's profile. No start date: that is on their own profile only. */
-function colleagueAsJson(colleague: ColleagueProfile): unknown {
-  return {
-    ...(entryAsJson(colleague) as object),
-    manager: colleague.manager === null ? null : briefAsJson(colleague.manager),
-    reports: colleague.reports.map(briefAsJson),
   };
 }
 
@@ -140,6 +131,27 @@ function entryAsJson(entry: DirectoryEntry): unknown {
     /** What they keep themselves. Null where they have said nothing. */
     workMobile: entry.workMobile,
     description: entry.description,
+  };
+}
+
+/**
+ * One person's profile. `notListed` is only ever non null for HR. No start date for anybody
+ * current: that is on their own profile only.
+ */
+function personProfileAsJson(person: DirectoryProfile): unknown {
+  return {
+    ...(entryAsJson(person) as object),
+    manager: person.manager === null ? null : briefAsJson(person.manager),
+    reports: person.reports.map(briefAsJson),
+    notListed:
+      person.notListed === null
+        ? null
+        : {
+            reason: person.notListed.reason,
+            /** Ten characters each. NFR DAT 03. */
+            startDate: person.notListed.startDate,
+            exitDate: person.notListed.exitDate,
+          },
   };
 }
 

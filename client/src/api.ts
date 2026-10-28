@@ -2061,19 +2061,6 @@ export interface MyProfile extends DirectoryPerson {
   manager: PersonInBrief | null;
 }
 
-/** A colleague's profile, read only, with their place on the chart. */
-export interface ColleagueProfile extends DirectoryPerson {
-  /** Null for the head of the organisation, or where their manager has left. */
-  manager: PersonInBrief | null;
-  /** By surname. */
-  reports: PersonInBrief[];
-}
-
-/** One colleague. A 404 for a leaver and for an id that is nobody's. */
-export async function colleagueProfile(employeeId: string): Promise<ColleagueProfile> {
-  return request<ColleagueProfile>('GET', `/api/people/${encodeURIComponent(employeeId)}/profile`);
-}
-
 /** What I may change on my own record. An absent field is left alone; empty clears it. */
 export interface ProfileFields {
   workMobile?: string;
@@ -2107,6 +2094,28 @@ export interface Directory {
 /** Everybody at the company today. The searching is the page's, over this one answer. */
 export async function staffDirectory(): Promise<Directory> {
   return request<Directory>('GET', '/api/directory');
+}
+
+/** Why somebody with a record is not in the directory today. */
+export type NotListedReason = 'LEFT' | 'NOT_STARTED' | 'SUSPENDED';
+
+/**
+ * One person's profile, asked for by id. Somebody who is not current comes back to HR alone,
+ * with why; to anybody else the server answers 404.
+ */
+export interface DirectoryProfile extends DirectoryPerson {
+  /** Null for the head of the organisation, or where their manager is no longer here. */
+  manager: PersonInBrief | null;
+  /** The people here today who report to them, by surname. */
+  reports: PersonInBrief[];
+  notListed: { reason: NotListedReason; startDate: string; exitDate: string | null } | null;
+}
+
+export async function directoryPerson(employeeId: string): Promise<DirectoryProfile> {
+  return request<DirectoryProfile>(
+    'GET',
+    `/api/directory/people/${encodeURIComponent(employeeId)}`,
+  );
 }
 
 /** One person on the organisation chart, and the people who report to them. */

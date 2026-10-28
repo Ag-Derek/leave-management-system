@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ApiError,
-  type ColleagueProfile,
-  colleagueProfile,
+  type DirectoryProfile,
+  directoryPerson,
   isNotSignedIn,
   type PersonInBrief,
 } from '../../api';
+import { day } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import type { BackTo } from './DirectoryPage';
@@ -34,7 +35,7 @@ export function ColleagueProfilePage({
   back: BackTo;
   onSignedOut: () => void;
 }) {
-  const [found, setFound] = useState<ColleagueProfile | undefined>(undefined);
+  const [found, setFound] = useState<DirectoryProfile | undefined>(undefined);
   const [missing, setMissing] = useState(false);
   const [problem, setProblem] = useState<Problem | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,7 @@ export function ColleagueProfilePage({
 
     const stillWanted = () => asked.current === employeeId;
 
-    colleagueProfile(employeeId)
+    directoryPerson(employeeId)
       .then((colleague) => {
         if (!stillWanted()) return;
 
@@ -117,11 +118,13 @@ export function ColleagueProfilePage({
   );
 }
 
-function Profile({ colleague, today }: { colleague: ColleagueProfile; today: string }) {
-  const { firstName, lastName } = colleague;
+function Profile({ colleague, today }: { colleague: DirectoryProfile; today: string }) {
+  const { firstName, lastName, notListed } = colleague;
 
   return (
     <article className="my-profile" aria-label={`${firstName} ${lastName}`}>
+      {notListed === null ? null : <NotListed notListed={notListed} />}
+
       <div className="my-profile-head">
         <div className="my-profile-photo">
           <Avatar person={colleague} />
@@ -134,9 +137,17 @@ function Profile({ colleague, today }: { colleague: ColleagueProfile; today: str
           <p className="my-profile-role">
             {[colleague.jobTitle, colleague.department.name].filter(Boolean).join(', ')}
           </p>
-          <p>
-            <Today person={colleague} today={today} inWords="In today" awayWords="On leave, back" />
-          </p>
+          {/* Somebody not here is neither in nor away. */}
+          {notListed === null ? (
+            <p>
+              <Today
+                person={colleague}
+                today={today}
+                inWords="In today"
+                awayWords="On leave, back"
+              />
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -193,10 +204,13 @@ function Profile({ colleague, today }: { colleague: ColleagueProfile; today: str
             )}
           </div>
 
-          <a className="view-in-chart" href={chartAddress(colleague)}>
-            <Icon name="stage" />
-            See the organisation chart
-          </a>
+          {/* Only somebody current is on the chart. */}
+          {notListed === null ? (
+            <a className="view-in-chart" href={chartAddress(colleague)}>
+              <Icon name="stage" />
+              See the organisation chart
+            </a>
+          ) : null}
         </section>
       </div>
 
@@ -204,6 +218,30 @@ function Profile({ colleague, today }: { colleague: ColleagueProfile; today: str
         The directory shows that somebody is away and when they are back. It never shows why.
       </p>
     </article>
+  );
+}
+
+/**
+ * Why HR is looking at somebody the directory does not list, and where their records are.
+ * Only HR is ever answered such a profile, so only HR ever sees this.
+ */
+function NotListed({ notListed }: { notListed: NonNullable<DirectoryProfile['notListed']> }) {
+  return (
+    <div className="notice warning directory-not-listed" role="note">
+      <p>
+        {notListed.reason === 'LEFT'
+          ? `Left. Their last day was ${day(notListed.exitDate ?? notListed.startDate)}.`
+          : notListed.reason === 'NOT_STARTED'
+            ? `Not started yet. They join on ${day(notListed.startDate)}.`
+            : 'Suspended.'}{' '}
+        Colleagues cannot see this profile; you can because you keep staff records.
+      </p>
+      {notListed.reason === 'LEFT' ? (
+        <p>
+          <a href="#/leavers">Final leave statement</a> · <a href="#/staff-leave">Leave history</a>
+        </p>
+      ) : null}
+    </div>
   );
 }
 

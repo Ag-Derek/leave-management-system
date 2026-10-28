@@ -198,6 +198,22 @@ correcting data — and only one of them would have remembered to set the column
 leave history points at, because a dispute about a balance settled two years ago
 is answered by rows that reference them. FR 06.
 
+**The exit date is the last day worked**, confirmed with HR. Who is at the company
+on a day is one rule, `whyNotListed()` in
+`server/src/core/organisation/employee/current.ts`: a joiner from their start date,
+a leaver through their exit date and gone the day after, and nobody suspended. HR
+may mark somebody TERMINATED before that date; they are still here until it passes.
+The directory's list, its search, a profile and the organisation chart all ask it,
+and a leaver's profile answers 404 to anybody but HR.
+
+**A leaver's reports move up the day after their last day.** The `leaver-reports`
+job (hourly, `LeaverReports`) gives each report who is still here the leaver's own
+manager, or the nearest ACTIVE one above them where that person has gone too. Each
+move goes through `EmployeeService.update`, so it is checked and audited, and the
+report's pending leave follows them to the new manager (FR 07). A leaver who headed
+the organisation has nobody above them: their reports are left where they are, the
+job logs them, and the chart flags them for HR to place.
+
 Three things enforce that, and it is worth knowing which covers what:
 
 | | Covers | Does not cover |

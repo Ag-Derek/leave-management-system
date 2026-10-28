@@ -7,15 +7,17 @@ import type { DepartmentRepository } from '../../core/organisation/department/de
 import { EmployeeNotFound } from '../../core/organisation/employee/employee.js';
 import type { EmployeeRepository } from '../../core/organisation/employee/employee.db.js';
 import {
-  colleagueFor,
-  type ColleagueProfile,
   type Directory,
   directoryFor,
+  type DirectoryProfile,
   entryFor,
+  isCurrentOn,
   type MyProfile,
+  reportingLineOf,
   type StaffChart,
   staffChartFor,
   type WhoIsAway,
+  whyNotListed,
 } from './directory.js';
 import { directoryPolicy } from './policy.js';
 import { validateProfileEdit } from './profile.js';
@@ -45,12 +47,15 @@ export class DirectoryService {
 
     const today = this.today();
 
-    const [employees, departments, away] = await Promise.all([
-      this.employees.list({ activeOnly: true }),
+    /* Everybody, not `activeOnly`: a leaver already marked TERMINATED is still listed until
+       their exit date passes, and `isCurrentOn` is what decides that. */
+    const [everybody, departments, away] = await Promise.all([
+      this.employees.list(),
       this.departments.list(),
       this.away === undefined ? [] : this.away.awayOn(today),
     ]);
 
+    const employees = everybody.filter((one) => isCurrentOn(one, today));
     const profiles = await this.employees.profilesOf(employees.map((one) => one.id));
 
     return directoryFor({ employees, departments, away, profiles, today });
@@ -65,45 +70,52 @@ export class DirectoryService {
   async chart(actor: Actor): Promise<StaffChart> {
     this.guard.enforce(directoryPolicy.chart(actor));
 
-    return staffChartFor(await this.employees.list({ activeOnly: true }), this.today());
+    return staffChartFor(await this.employees.list(), this.today());
   }
 
   /**
-   * One colleague, with who they report to and who reports to them.
+   * One person's profile, with their reporting line: anybody current to anybody, and anybody
+   * else to HR alone.
    *
-   * Found among everybody current rather than by id, which also finds their reports, and
-   * means an id that is not a number is nobody rather than a query that fails. Anybody not
-   * current is EmployeeNotFound, a 404 that does not say whether the id was ever anybody's.
+   * An id that is nobody and a leaver asked for by somebody who is not HR get the same 404,
+   * so the address cannot be used to learn who has left. Found in the list rather than by id,
+   * which also finds their manager and reports, and means an id that is not a number, or is
+   * too large for one, is nobody rather than a query that fails.
    */
-  async colleague(actor: Actor, employeeId: string): Promise<ColleagueProfile> {
-    this.guard.enforce(directoryPolicy.read(actor));
-
+  async person(actor: Actor, employeeId: string): Promise<DirectoryProfile> {
     const today = this.today();
+    const everybody = await this.employees.list();
+    const employee = everybody.find((one) => one.id === employeeId);
 
-    const [employees, departments, away] = await Promise.all([
-      this.employees.list({ activeOnly: true }),
-      this.departments.list(),
-      this.away === undefined ? [] : this.away.awayOn(today),
-    ]);
-
-    /* Asked only for an id the list holds, so an id too large for a bigint is never sent. */
-    const profiles = employees.some((one) => one.id === employeeId)
-      ? await this.employees.profilesOf([employeeId])
-      : [];
-
-    const found = colleagueFor(employeeId, {
-      employees,
-      departments,
-      away,
-      profile: profiles[0],
-      today,
-    });
-
-    if (found === undefined) {
+    if (employee === undefined) {
+      this.guard.enforce(directoryPolicy.read(actor));
       throw new EmployeeNotFound(employeeId);
     }
 
-    return found;
+    const reason = whyNotListed(employee, today);
+
+    this.guard.enforce(directoryPolicy.readProfile(actor, employee.id, reason === null));
+
+    const [department, away, profiles] = await Promise.all([
+      this.departments.findById(employee.departmentId),
+      /* Nobody who is not here is away. */
+      this.away === undefined || reason !== null ? [] : this.away.awayOn(today),
+      this.employees.profilesOf([employee.id]),
+    ]);
+
+    return {
+      ...entryFor(
+        employee,
+        department,
+        away.find((one) => one.employeeId === employee.id)?.backOn,
+        profiles[0],
+      ),
+      ...reportingLineOf(employee, everybody, today),
+      notListed:
+        reason === null
+          ? null
+          : { reason, startDate: employee.startDate, exitDate: employee.exitDate },
+    };
   }
 
   /**

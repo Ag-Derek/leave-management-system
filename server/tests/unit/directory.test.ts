@@ -4,10 +4,11 @@ import type { Department } from '../../src/core/organisation/department/departme
 import type { Employee } from '../../src/core/organisation/employee/employee.js';
 import {
   type ChartPerson,
-  colleagueFor,
   directoryFor,
   isCurrentOn,
+  reportingLineOf,
   staffChartFor,
+  whyNotListed,
 } from '../../src/apps/directory/directory.js';
 import { directoryPolicy } from '../../src/apps/directory/policy.js';
 import {
@@ -47,13 +48,89 @@ describe('who is current', () => {
     expect(isCurrentOn(person({ id: 'a', exitDate: '2026-10-26' }), TODAY)).toBe(false);
   });
 
-  it('leaves out anybody who is not ACTIVE', () => {
+  it('leaves out somebody suspended, and a leaver whose exit date has passed', () => {
     expect(isCurrentOn(person({ id: 'a', employmentStatus: 'SUSPENDED' }), TODAY)).toBe(false);
     expect(
       isCurrentOn(
         person({ id: 'a', employmentStatus: 'TERMINATED', exitDate: '2026-07-31' }),
         TODAY,
       ),
+    ).toBe(false);
+  });
+
+  /* HR may record a leaver as TERMINATED before they go (checkDatesAgree allows it on
+     purpose). The paperwork being done early does not make them gone. */
+  it('includes a leaver already marked TERMINATED whose last day is today or still to come', () => {
+    const today = person({ id: 'a', employmentStatus: 'TERMINATED', exitDate: TODAY });
+    const friday = person({ id: 'b', employmentStatus: 'TERMINATED', exitDate: '2026-10-30' });
+
+    expect(isCurrentOn(today, TODAY)).toBe(true);
+    expect(isCurrentOn(friday, TODAY)).toBe(true);
+  });
+
+  it('treats a TERMINATED record with no exit date as gone, never as here', () => {
+    expect(isCurrentOn(person({ id: 'a', employmentStatus: 'TERMINATED' }), TODAY)).toBe(false);
+  });
+});
+
+describe('joiners and leavers, day by day', () => {
+  const joiner = person({ id: 'new', startDate: '2026-10-28' });
+  const leaver = person({ id: 'old', employmentStatus: 'TERMINATED', exitDate: '2026-10-27' });
+
+  /* The story's criteria, as the list itself answers them on three days in a row. */
+  it.each([
+    ['2026-10-26', ['old']],
+    ['2026-10-27', ['old']],
+    ['2026-10-28', ['new']],
+  ])('on %s the list is %j', (day, listed) => {
+    const directory = directoryFor({
+      employees: [joiner, leaver],
+      departments: [OPERATIONS],
+      away: [],
+      profiles: [],
+      today: day,
+    });
+
+    expect(directory.people.map((one) => one.employeeId)).toEqual(listed);
+  });
+
+  it('is the same rule on the organisation chart', () => {
+    const ids = (day: string) =>
+      staffChartFor([joiner, leaver], day).lines.map((line) => line.top.employeeId);
+
+    expect(ids('2026-10-27')).toEqual(['old']);
+    expect(ids('2026-10-28')).toEqual(['new']);
+  });
+
+  it('says why somebody is not listed', () => {
+    expect(whyNotListed(joiner, '2026-10-27')).toBe('NOT_STARTED');
+    expect(whyNotListed(leaver, '2026-10-28')).toBe('LEFT');
+    expect(whyNotListed(person({ id: 's', employmentStatus: 'SUSPENDED' }), TODAY)).toBe(
+      'SUSPENDED',
+    );
+    expect(whyNotListed(leaver, '2026-10-27')).toBeNull();
+  });
+});
+
+describe('who may read one person’s profile', () => {
+  const adwoa = signedInAs('adwoa', { roles: ['EMPLOYEE'], isManager: false });
+  const hr = signedInAs('ama', { roles: ['EMPLOYEE', 'HR_OFFICER'], isManager: false });
+
+  it('is any employee, for somebody current', () => {
+    expect(directoryPolicy.readProfile(adwoa, 'kofi', true).allowed).toBe(true);
+  });
+
+  it('is HR alone for somebody who is not, refused silently so it answers 404', () => {
+    const refused = directoryPolicy.readProfile(adwoa, 'kojo', false);
+
+    expect(refused.allowed).toBe(false);
+    expect(refused.told).toBeNull();
+    expect(directoryPolicy.readProfile(hr, 'kojo', false).allowed).toBe(true);
+  });
+
+  it('is nobody without an employee record behind them', () => {
+    expect(
+      directoryPolicy.readProfile(theSystem('a directory unit test'), 'kofi', true).allowed,
     ).toBe(false);
   });
 });
@@ -245,7 +322,7 @@ describe('the organisation chart', () => {
   }
 });
 
-describe('a colleague’s profile', () => {
+describe('a reporting line on a profile', () => {
   const organisation = [
     person({ id: 'ama', firstName: 'Ama', lastName: 'Owusu', jobTitle: 'Chief Executive' }),
     person({ id: 'efua', firstName: 'Efua', lastName: 'Darko', managerId: 'ama' }),
@@ -256,62 +333,58 @@ describe('a colleague’s profile', () => {
       firstName: 'Kojo',
       lastName: 'Antwi',
       managerId: 'efua',
+      employmentStatus: 'TERMINATED',
       exitDate: '2026-07-31',
     }),
   ];
 
-  const facts = {
-    employees: organisation,
-    departments: [OPERATIONS],
-    away: [{ employeeId: 'akosua', backOn: '2026-11-02' }],
-    profile: undefined,
-    today: TODAY,
-  };
+  const lineOf = (id: string, everybody: Employee[] = organisation) =>
+    reportingLineOf(everybody.find((one) => one.id === id) as Employee, everybody, TODAY);
 
   it('names who they report to, and who reports to them by surname, leavers left out', () => {
-    const efua = colleagueFor('efua', facts);
+    const efua = lineOf('efua');
 
-    expect(efua?.manager).toEqual({
+    expect(efua.manager).toEqual({
       employeeId: 'ama',
       firstName: 'Ama',
       lastName: 'Owusu',
       jobTitle: 'Chief Executive',
     });
-    expect(efua?.reports.map((one) => one.employeeId)).toEqual(['kofi', 'akosua']);
+    expect(efua.reports.map((one) => one.employeeId)).toEqual(['kofi', 'akosua']);
   });
 
   it('has no manager for the head of the organisation, and no reports for somebody with none', () => {
-    expect(colleagueFor('ama', facts)?.manager).toBeNull();
-    expect(colleagueFor('kofi', facts)?.reports).toEqual([]);
+    expect(lineOf('ama').manager).toBeNull();
+    expect(lineOf('kofi').reports).toEqual([]);
   });
 
   it('has no manager where the manager has left', () => {
     const left = organisation.map((one) =>
-      one.id === 'efua' ? { ...one, exitDate: '2026-07-31' } : one,
+      one.id === 'efua'
+        ? { ...one, employmentStatus: 'TERMINATED' as const, exitDate: '2026-07-31' }
+        : one,
     );
 
-    expect(colleagueFor('kofi', { ...facts, employees: left })?.manager).toBeNull();
+    expect(lineOf('kofi', left).manager).toBeNull();
   });
 
-  it('carries the day they are back, and what they keep themselves', () => {
-    const akosua = colleagueFor('akosua', {
-      ...facts,
-      profile: { employeeId: 'akosua', workMobile: '024 555 0184', description: 'Deliveries.' },
-    });
+  /* The joiner and leaver rules: marked TERMINATED ahead of the day, still here until it. */
+  it('keeps a manager marked TERMINATED whose last day is still to come', () => {
+    const leaving = organisation.map((one) =>
+      one.id === 'efua'
+        ? { ...one, employmentStatus: 'TERMINATED' as const, exitDate: '2026-12-31' }
+        : one,
+    );
 
-    expect(akosua?.backOn).toBe('2026-11-02');
-    expect(akosua?.workMobile).toBe('024 555 0184');
-    expect(akosua?.description).toBe('Deliveries.');
+    expect(lineOf('kofi', leaving).manager?.employeeId).toBe('efua');
   });
 
-  it('is nobody for a leaver, and for an id that is nobody’s', () => {
-    expect(colleagueFor('kojo', facts)).toBeUndefined();
-    expect(colleagueFor('999', facts)).toBeUndefined();
-    expect(colleagueFor('not-a-number', facts)).toBeUndefined();
+  it('still draws a line for somebody who has left, for HR', () => {
+    expect(lineOf('kojo').manager?.employeeId).toBe('efua');
   });
 
-  it('carries no start date, no employee number and no manager id', () => {
-    const wire = JSON.stringify(colleagueFor('efua', facts));
+  it('carries a name and a job title of each person, and no employee number', () => {
+    const wire = JSON.stringify(lineOf('efua'));
 
     expect(wire).not.toContain('startDate');
     expect(wire).not.toContain('RH-');

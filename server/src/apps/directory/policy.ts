@@ -1,7 +1,8 @@
 /** Who may read the staff directory. NFR SEC 02, §10.. */
 
-import { type Actor, isSelf } from '../../core/auth/actor.js';
+import { type Actor, holdsAny, isSelf } from '../../core/auth/actor.js';
 import { type Decision, policyFor } from '../../core/auth/policy.js';
+import { READS_EVERY_RECORD } from '../../core/identity/role/roles.js';
 
 const about = policyFor('directory');
 
@@ -24,6 +25,31 @@ export const directoryPolicy = {
     return actor.employeeId !== null
       ? about.allow(actor, 'read')
       : about.refuse(actor, 'read', null, 'has no employee record behind it');
+  },
+
+  /**
+   * Reading one person's profile.
+   *
+   * Anybody current is every employee's, as they are in the list. Anybody else — a leaver, a
+   * joiner who has not started, somebody suspended — is HR's alone, the roles that read every
+   * record and keep the leaver's history.
+   *
+   * Refused silently, so the address of a leaver answers exactly as an id that is nobody does
+   * and cannot be used to learn who has left. The guard still writes it down. NFR SEC 03.
+   */
+  readProfile(actor: Actor, employeeId: string, listed: boolean): Decision {
+    if (actor.employeeId === null) {
+      return about.refuse(actor, 'readProfile', employeeId, 'has no employee record behind it');
+    }
+
+    return listed || holdsAny(actor, ...READS_EVERY_RECORD)
+      ? about.allow(actor, 'readProfile', employeeId)
+      : about.refuse(
+          actor,
+          'readProfile',
+          employeeId,
+          'not in the directory today, and holds no role that reads everybody',
+        );
   },
 
   /**

@@ -2,6 +2,7 @@
 
 import type { CalendarDate } from '../../core/calendar/time.js';
 import type { Department } from '../../core/organisation/department/department.js';
+import { isCurrentOn, type NotListedReason } from '../../core/organisation/employee/current.js';
 import type { Employee, EmployeeProfile } from '../../core/organisation/employee/employee.js';
 import {
   buildOrgChart,
@@ -64,7 +65,7 @@ export interface MyProfile extends DirectoryEntry {
   } | null;
 }
 
-/** Somebody named on a colleague's profile: their manager, or one of their reports. */
+/** Somebody named on a profile: their manager, or one of their reports. */
 export interface PersonInBrief {
   employeeId: string;
   firstName: string;
@@ -72,18 +73,30 @@ export interface PersonInBrief {
   jobTitle: string | null;
 }
 
-/**
- * A colleague's profile, as anybody at the company may read it.
- *
- * What the directory shows of them, and their place on the chart: who they report to and
- * who reports to them. The chart already shows every employee that much, so nothing here is
- * new to the reader. When they started is not on it; that stays on their own profile.
- */
-export interface ColleagueProfile extends DirectoryEntry {
+/** Who somebody reports to and who reports to them, among the people current on a day. */
+export interface ReportingLine {
   /** Null for the head of the organisation, or where their manager is no longer current. */
   manager: PersonInBrief | null;
-  /** The people current today who report to them, by surname. */
+  /** By surname. */
   reports: PersonInBrief[];
+}
+
+/**
+ * One person's profile, as `#/directory/<id>` asks for it.
+ *
+ * Anybody current, to anybody. Somebody who is not current only to HR, with why and the two
+ * dates that decide it; to anybody else they are a 404, the same answer as an id that is
+ * nobody.
+ *
+ * Their reporting line is on it too, which the chart already shows every employee. When they
+ * started is not, for anybody current; that stays on their own profile.
+ */
+export interface DirectoryProfile extends DirectoryEntry, ReportingLine {
+  notListed: {
+    reason: NotListedReason;
+    startDate: CalendarDate;
+    exitDate: CalendarDate | null;
+  } | null;
 }
 
 export interface Directory {
@@ -105,20 +118,14 @@ export interface DirectoryFacts {
   today: CalendarDate;
 }
 
-/**
- * Whether somebody is at the company on this day.
- *
- * ACTIVE, started, and not yet gone. The exit date is their last day, so they are still
- * listed on it. A SUSPENDED record is still employed but is not listed: the directory is
- * who you can expect to reach.
- */
-export function isCurrentOn(employee: Employee, day: CalendarDate): boolean {
-  return (
-    employee.employmentStatus === 'ACTIVE' &&
-    employee.startDate <= day &&
-    (employee.exitDate === null || employee.exitDate >= day)
-  );
-}
+/* Who the directory lists is the organisation's rule, not the directory's: the job that moves
+   a leaver's reports asks the same question. Kept in core and passed on from here. */
+export {
+  isCurrentOn,
+  NOT_LISTED_REASONS,
+  type NotListedReason,
+  whyNotListed,
+} from '../../core/organisation/employee/current.js';
 
 /** Compares names the way a person reads a list: ignoring case and accents. */
 const names = new Intl.Collator('en', { sensitivity: 'base' });
@@ -188,31 +195,18 @@ export function directoryFor(facts: DirectoryFacts): Directory {
 }
 
 /**
- * One colleague's profile, or undefined where nobody current has that id.
- *
- * A leaver, a suspended record and an id that is nobody's all come back undefined, so the
- * answer cannot be used to tell one from another.
+ * Where somebody sits: their manager and their reports, drawn only from the people current on
+ * the day, as the chart is. Somebody who is not current themselves still gets a line, for HR.
  */
-export function colleagueFor(
-  employeeId: string,
-  facts: Omit<DirectoryFacts, 'profiles'> & { profile: EmployeeProfile | undefined },
-): ColleagueProfile | undefined {
-  const current = facts.employees.filter((employee) => isCurrentOn(employee, facts.today));
-  const employee = current.find((one) => one.id === employeeId);
-
-  if (employee === undefined) {
-    return undefined;
-  }
-
+export function reportingLineOf(
+  employee: Employee,
+  everybody: readonly Employee[],
+  today: CalendarDate,
+): ReportingLine {
+  const current = everybody.filter((one) => isCurrentOn(one, today));
   const manager = current.find((one) => one.id === employee.managerId);
 
   return {
-    ...entryFor(
-      employee,
-      facts.departments.find((one) => one.id === employee.departmentId),
-      facts.away.find((one) => one.employeeId === employee.id)?.backOn,
-      facts.profile,
-    ),
     manager: manager === undefined ? null : inBrief(manager),
     reports: current
       .filter((one) => one.managerId === employee.id)

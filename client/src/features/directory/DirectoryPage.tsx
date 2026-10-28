@@ -95,6 +95,34 @@ export function DirectoryPage({
 
   useEffect(load, [load]);
 
+  /* The list is who is here on one day. A tab left open past midnight UTC, the day the server
+     judges by, asks again, so the leaver goes and the joiner arrives without a reload. */
+  useEffect(() => {
+    if (directory === undefined) {
+      return;
+    }
+
+    const recheck = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        directory.today !== new Date().toISOString().slice(0, 10)
+      ) {
+        load();
+      }
+    };
+
+    const midnight = new Date();
+    midnight.setUTCHours(24, 0, 5, 0);
+
+    const timer = window.setTimeout(recheck, midnight.getTime() - Date.now());
+    document.addEventListener('visibilitychange', recheck);
+
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [directory, load]);
+
   /* My own changes, put into the list in hand so it shows them without a second fetch. */
   const savedMine = useCallback((mine: MyProfile) => {
     setDirectory((was) =>
