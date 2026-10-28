@@ -2032,6 +2032,17 @@ export interface DirectoryDepartment {
   name: string;
 }
 
+/**
+ * Where somebody's photo is, at each size. Paths on this origin, served only to somebody
+ * signed in; the address changes whenever the photo does, so a browser may keep each one.
+ */
+export interface PhotoLinks {
+  /** 128 pixels square, for the list and anywhere a face sits beside a name. */
+  thumbnail: string;
+  /** Up to 512 pixels square, for a profile. */
+  profile: string;
+}
+
 /** One person in the directory. */
 export interface DirectoryPerson {
   employeeId: string;
@@ -2045,6 +2056,8 @@ export interface DirectoryPerson {
   /** What they keep themselves. Null where they have said nothing. */
   workMobile: string | null;
   description: string | null;
+  /** Null where they have put none up, and their initials are drawn instead. */
+  photo: PhotoLinks | null;
 }
 
 /** Somebody named on a profile: a manager, or one of their reports. */
@@ -2053,6 +2066,7 @@ export interface PersonInBrief {
   firstName: string;
   lastName: string;
   jobTitle: string | null;
+  photo: PhotoLinks | null;
 }
 
 /** My own profile, with the HR-kept facts only I am shown. */
@@ -2081,6 +2095,54 @@ export async function changeMyProfile(
     `/api/people/${encodeURIComponent(employeeId)}/profile`,
     fields,
   );
+}
+
+/** What a photo may be. Shown and checked on the form; the server reads the bytes itself. */
+export const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+/** The smallest square a photo may be cut to. */
+export const MIN_PHOTO_SIDE = 128;
+
+/** The square to cut, in pixels of the photo the right way up. */
+export interface PhotoCrop {
+  left: number;
+  top: number;
+  side: number;
+}
+
+/**
+ * Puts up my photo, replacing any already there.
+ *
+ * The body is the image as chosen, untouched: the server cuts the square, makes both sizes and
+ * drops everything the camera wrote into the file. Only the crop is decided here.
+ */
+export async function uploadMyPhoto(
+  employeeId: string,
+  file: File,
+  crop: PhotoCrop,
+): Promise<PhotoLinks> {
+  const response = await send(`/api/people/${encodeURIComponent(employeeId)}/photo`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: {
+      'content-type': file.type === '' ? 'application/octet-stream' : file.type,
+      'x-photo-crop': `${String(crop.left)},${String(crop.top)},${String(crop.side)}`,
+    },
+    body: file,
+  });
+
+  const payload: unknown = await response.json().catch(() => undefined);
+
+  if (!response.ok) {
+    throw errorFrom(response.status, payload);
+  }
+
+  return (payload as { photo: PhotoLinks }).photo;
+}
+
+/** Takes my photo down, so my initials are shown again. */
+export async function removeMyPhoto(employeeId: string): Promise<void> {
+  return request<undefined>('DELETE', `/api/people/${encodeURIComponent(employeeId)}/photo`);
 }
 
 export interface Directory {
@@ -2124,6 +2186,7 @@ export interface ChartPerson {
   firstName: string;
   lastName: string;
   jobTitle: string | null;
+  photo: PhotoLinks | null;
   /** By surname. */
   reports: ChartPerson[];
 }

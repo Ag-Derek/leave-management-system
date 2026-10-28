@@ -13,6 +13,7 @@ import { HolidayRepository } from './apps/leave/holiday/holiday.db.js';
 import { HolidayRecalculationRepository } from './apps/leave/holiday/recalculation.db.js';
 import { ApprovalDelegationRepository } from './apps/leave/leave-request/delegation.db.js';
 import { AttachmentRepository } from './apps/leave/leave-request/attachment.db.js';
+import { PhotoRepository } from './apps/directory/photo.db.js';
 import { AttachmentLinkRepository } from './apps/leave/leave-request/attachment-link.db.js';
 import { LeaveDecisionRepository } from './apps/leave/leave-request/leave-decision.db.js';
 import { LeaveRequestDraftRepository } from './apps/leave/leave-request/draft.db.js';
@@ -265,6 +266,8 @@ const app = buildApp({
   /* Both built once here, as the mailer is: the driver each resolves to is a deployment's
      decision, and nothing above them may know which one it got. NFR SEC 04, NFR SEC 07. */
   storage,
+  /** People's photos, whose bytes go to the same storage. */
+  photos: new PhotoRepository(db),
   scanner: createScanner(),
   accounts,
   roles,

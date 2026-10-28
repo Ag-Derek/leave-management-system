@@ -74,6 +74,8 @@ import { TeamCalendarService } from './apps/leave/team/team-calendar.service.js'
 import { AwayTodayService } from './apps/leave/team/away-today.service.js';
 import { DirectoryService } from './apps/directory/directory.service.js';
 import { directoryRoutes } from './apps/directory/routes.js';
+import type { PhotoRepository } from './apps/directory/photo.db.js';
+import { PhotoService } from './apps/directory/photo.service.js';
 import type { WorkPatternRepository } from './core/calendar/work-pattern/work-pattern.db.js';
 import { identify, insistOnANewPassword } from './core/http/identify.js';
 import { answerProblems, type FailureLog } from './core/http/problems.js';
@@ -150,6 +152,11 @@ export interface Application {
   attachmentLinks: AttachmentLinkRepository;
   /** NFR SEC 04. Where attachment bytes live, behind one interface. */
   storage: Storage;
+  /**
+   * People's photos. Optional, so a test app without them has no photo routes and the
+   * directory shows everybody's initials. The bytes go to `storage`, as attachments do.
+   */
+  photos?: PhotoRepository;
   /** NFR SEC 07. */
   scanner: Scanner;
   accounts: SignInAccountRepository;
@@ -439,10 +446,15 @@ export function buildApp(parts: Application): Express {
           parts.guard,
           parts.employees,
           parts.departments,
+          parts.photos ?? { photosOf: () => Promise.resolve([]) },
           parts.patterns === undefined
             ? undefined
             : new AwayTodayService(parts.requests, parts.employees, parts.patterns, parts.holidays),
         ),
+        photos:
+          parts.photos === undefined
+            ? undefined
+            : new PhotoService(parts.guard, parts.photos, parts.employees, parts.storage),
       }),
     );
   }

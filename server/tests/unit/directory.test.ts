@@ -149,6 +149,7 @@ describe('the directory', () => {
     departments: [OPERATIONS, FINANCE, department('empty', 'Nobody here')],
     away: [{ employeeId: 'akosua', backOn: '2026-11-02' }],
     profiles: [{ employeeId: 'kofi', workMobile: '024 555 0197', description: 'Tenders.' }],
+    photos: [{ employeeId: 'yaw', id: '41' }],
     today: TODAY,
   });
 
@@ -191,6 +192,13 @@ describe('the directory', () => {
     expect(yaw?.description).toBeNull();
   });
 
+  it('names the photo of somebody who has one, and nothing for everybody else', () => {
+    expect(directory.people.find((one) => one.employeeId === 'yaw')?.photoId).toBe('41');
+    expect(
+      directory.people.filter((one) => one.employeeId !== 'yaw').map((one) => one.photoId),
+    ).toEqual([null, null, null]);
+  });
+
   it('carries nothing from the record but what the directory shows', () => {
     expect(Object.keys(directory.people[0]).sort()).toEqual([
       'backOn',
@@ -200,6 +208,7 @@ describe('the directory', () => {
       'firstName',
       'jobTitle',
       'lastName',
+      'photoId',
       'workEmail',
       'workMobile',
     ]);
@@ -300,16 +309,19 @@ describe('the organisation chart', () => {
     expect(staffChartFor([], TODAY)).toEqual({ today: TODAY, lines: [], total: 0 });
   });
 
-  it('carries a name and a job title of each person, and nothing else from the record', () => {
-    const top = staffChartFor(organisation, TODAY).lines[0].top;
+  it('carries a name, a job title and a photo of each person, and nothing else from the record', () => {
+    const top = staffChartFor(organisation, TODAY, [{ employeeId: 'ama', id: '3' }]).lines[0].top;
 
     expect(Object.keys(top).sort()).toEqual([
       'employeeId',
       'firstName',
       'jobTitle',
       'lastName',
+      'photoId',
       'reports',
     ]);
+    expect(top.photoId).toBe('3');
+    expect(top.reports.every((one) => one.photoId === null)).toBe(true);
     expect(JSON.stringify(top)).not.toContain('RH-');
     expect(JSON.stringify(top)).not.toContain('managerId');
   });
@@ -349,8 +361,20 @@ describe('a reporting line on a profile', () => {
       firstName: 'Ama',
       lastName: 'Owusu',
       jobTitle: 'Chief Executive',
+      photoId: null,
     });
     expect(efua.reports.map((one) => one.employeeId)).toEqual(['kofi', 'akosua']);
+  });
+
+  it('names the photo of whoever on it has one', () => {
+    const efua = reportingLineOf(
+      organisation.find((one) => one.id === 'efua') as Employee,
+      organisation,
+      TODAY,
+      new Map([['kofi', '7']]),
+    );
+
+    expect(efua.reports.map((one) => one.photoId)).toEqual(['7', null]);
   });
 
   it('has no manager for the head of the organisation, and no reports for somebody with none', () => {
@@ -431,11 +455,11 @@ describe('changing your own profile', () => {
     );
   });
 
-  it('knows the photo is one of the three, and says changing it is not available yet', () => {
+  it('knows the photo is one of the three, and says it is uploaded on its own', () => {
     expect(() => validateProfileEdit({ photo: null })).toThrow(
       expect.objectContaining({
         field: 'photo',
-        message: expect.stringContaining('not available yet'),
+        message: expect.stringContaining('uploaded on its own'),
       }),
     );
   });

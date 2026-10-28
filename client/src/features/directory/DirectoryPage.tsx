@@ -132,7 +132,12 @@ export function DirectoryPage({
             ...was,
             people: was.people.map((one) =>
               one.employeeId === mine.employeeId
-                ? { ...one, workMobile: mine.workMobile, description: mine.description }
+                ? {
+                    ...one,
+                    workMobile: mine.workMobile,
+                    description: mine.description,
+                    photo: mine.photo,
+                  }
                 : one,
             ),
           },

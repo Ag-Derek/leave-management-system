@@ -5,14 +5,15 @@ import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import type { BackTo } from './DirectoryPage';
 import { Avatar, chartAddress, Today } from './person';
+import { PhotoEditor } from './PhotoEditor';
 import { DESCRIPTION_LIMIT, descriptionProblem, lengthOf, workMobileProblem } from './rules';
 
 /**
  * My own profile, at `#/directory/<my id>`, where I change what I keep myself.
  *
- * Two of the three fields can be changed here: the work mobile and the description. The photo
- * is the third and is shown as mine to change, with the upload itself to come. Everything else
- * is shown as it stands and marked as HR's.
+ * The three fields I keep can be changed here: the photo, the work mobile and the description.
+ * The photo is saved on its own, as soon as it is positioned; the other two with Save.
+ * Everything else is shown as it stands and marked as HR's.
  *
  * Each rule is checked as it is typed, so a mistake is named before Save and Save is not
  * offered until there is nothing to name. A save is live at once.
@@ -180,7 +181,15 @@ function Editor({
     <form className="my-profile" onSubmit={save} noValidate>
       <div className="my-profile-head">
         <div className="my-profile-photo">
-          <Avatar person={saved} />
+          <PhotoEditor
+            mine={saved}
+            onChanged={(photo) => {
+              onSaved({ ...saved, photo });
+            }}
+            onSignedOut={onSignedOut}
+          >
+            <Avatar person={saved} size="profile" />
+          </PhotoEditor>
         </div>
 
         <div className="my-profile-who">

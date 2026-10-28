@@ -47,7 +47,9 @@ export type IconName =
   | 'eye'
   | 'eye-off'
   /* Back to where a screen was opened from. */
-  | 'back';
+  | 'back'
+  /* Putting up a photo. */
+  | 'camera';
 
 const PATHS: Record<IconName, string> = {
   /** What you have: a calendar with days counted on it. */
@@ -88,6 +90,8 @@ const PATHS: Record<IconName, string> = {
   send: 'M21 3 10.5 13.5M21 3l-6.5 18-4-8-8-4z',
   clip: 'M20 11.5 12 19.5a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 5 5L10 17.5a1.8 1.8 0 0 1-2.5-2.5l8-8',
   upload: 'M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2',
+  /** A photo of you: a camera body with its lens. */
+  camera: 'M4 8h3l1.5-2.5h7L17 8h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
   /** Trying the same thing again. */
   again: 'M20 12a8 8 0 1 1-2.6-5.9M20 3.5V8h-4.5',
   /** Adding one. */

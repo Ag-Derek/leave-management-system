@@ -722,6 +722,138 @@ a.portal-app:hover {
   font-size: 2rem;
 }
 
+/* The photo, the buttons that change it, and the hint, in one column under the face. */
+.my-profile-photo {
+  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  max-width: 11rem;
+  text-align: center;
+}
+
+.photo-editor {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+
+/* The face is the button: no box of its own, only the circle and the camera on its corner. */
+.photo-editor .photo-trigger {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.photo-editor .photo-trigger:hover:not(:disabled),
+.photo-editor .photo-trigger:active {
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.photo-editor .photo-trigger:hover .avatar {
+  filter: brightness(0.9);
+}
+
+.photo-editor .photo-trigger:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.photo-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  /* A ring the colour of the card, so the badge sits on the edge of the circle cleanly. */
+  border: 3px solid var(--card);
+}
+
+.photo-badge svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.photo-editor .photo-remove {
+  font-size: 0.8125rem;
+}
+
+.photo-editor .notice {
+  text-align: left;
+}
+
+/* Where the photo is positioned: the square that is kept, with the circle colleagues see. */
+.photo-positioner {
+  display: grid;
+  justify-items: center;
+  gap: var(--gap);
+  margin-top: var(--gap);
+}
+
+/* Always the width PhotoEditor's FRAME says, which the crop is worked out from. It fits the
+   narrowest phone the portal is drawn for. */
+.photo-frame {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--radius-small);
+  background: var(--line);
+  cursor: grab;
+  /* The page does not scroll under a finger that is moving the photo. */
+  touch-action: none;
+  user-select: none;
+}
+
+.photo-frame:active {
+  cursor: grabbing;
+}
+
+.photo-frame:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.photo-frame img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.photo-frame-circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--brand-black) 55%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--brand-white) 85%, transparent);
+  pointer-events: none;
+}
+
+.photo-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(18rem, 100%);
+}
+
+.photo-zoom input {
+  flex: 1;
+}
+
 .my-profile-who {
   min-width: 0;
 }
@@ -1627,6 +1759,13 @@ a.portal-app:hover {
   font-weight: 600;
   font-size: 0.8125rem;
   letter-spacing: 0.02em;
+}
+
+/* A photo where the initials would be: the same circle, filled edge to edge. */
+.avatar.is-photo {
+  display: block;
+  object-fit: cover;
+  background: var(--line);
 }
 
 .whoami-name {

@@ -47,6 +47,19 @@ export interface DirectoryEntry {
   /** What they keep themselves, rather than HR. */
   workMobile: string | null;
   description: string | null;
+  /** Their photo, where they have put one up. Null is shown as their initials. */
+  photoId: string | null;
+}
+
+/** Whose photo is which: the one fact about a photo the directory carries. */
+export interface PhotoOnRecord {
+  employeeId: string;
+  id: string;
+}
+
+/** Who has a photo up. `PhotoRepository` is one; an app with no photos answers nobody. */
+export interface PhotoLookup {
+  photosOf(employeeIds: readonly string[]): Promise<PhotoOnRecord[]>;
 }
 
 /**
@@ -57,12 +70,7 @@ export interface DirectoryEntry {
  */
 export interface MyProfile extends DirectoryEntry {
   startDate: CalendarDate;
-  manager: {
-    employeeId: string;
-    firstName: string;
-    lastName: string;
-    jobTitle: string | null;
-  } | null;
+  manager: PersonInBrief | null;
 }
 
 /** Somebody named on a profile: their manager, or one of their reports. */
@@ -71,6 +79,7 @@ export interface PersonInBrief {
   firstName: string;
   lastName: string;
   jobTitle: string | null;
+  photoId: string | null;
 }
 
 /** Who somebody reports to and who reports to them, among the people current on a day. */
@@ -115,6 +124,8 @@ export interface DirectoryFacts {
   away: readonly AwayToday[];
   /** What each person keeps themselves. Somebody with no row here has said nothing. */
   profiles: readonly EmployeeProfile[];
+  /** Who has a photo up. Absent, nobody does. */
+  photos?: readonly PhotoOnRecord[];
   today: CalendarDate;
 }
 
@@ -148,6 +159,7 @@ export function entryFor(
   department: Department | undefined,
   backOn: CalendarDate | undefined,
   profile: EmployeeProfile | undefined,
+  photoId?: string,
 ): DirectoryEntry {
   return {
     employeeId: employee.id,
@@ -164,7 +176,13 @@ export function entryFor(
     backOn: backOn ?? null,
     workMobile: profile?.workMobile ?? null,
     description: profile?.description ?? null,
+    photoId: photoId ?? null,
   };
+}
+
+/** Each person's photo id, by whose it is. */
+export function photoIdsOf(photos: readonly PhotoOnRecord[] = []): ReadonlyMap<string, string> {
+  return new Map(photos.map((one) => [one.employeeId, one.id]));
 }
 
 /** The directory, from the facts. */
@@ -172,6 +190,7 @@ export function directoryFor(facts: DirectoryFacts): Directory {
   const departments = new Map(facts.departments.map((one) => [one.id, one]));
   const backOn = new Map(facts.away.map((one) => [one.employeeId, one.backOn]));
   const profiles = new Map(facts.profiles.map((one) => [one.employeeId, one]));
+  const photos = photoIdsOf(facts.photos);
 
   const people = facts.employees
     .filter((employee) => isCurrentOn(employee, facts.today))
@@ -181,6 +200,7 @@ export function directoryFor(facts: DirectoryFacts): Directory {
         departments.get(employee.departmentId),
         backOn.get(employee.id),
         profiles.get(employee.id),
+        photos.get(employee.id),
       ),
     )
     .sort(bySurname);
@@ -202,25 +222,31 @@ export function reportingLineOf(
   employee: Employee,
   everybody: readonly Employee[],
   today: CalendarDate,
+  photos: ReadonlyMap<string, string> = new Map(),
 ): ReportingLine {
   const current = everybody.filter((one) => isCurrentOn(one, today));
   const manager = current.find((one) => one.id === employee.managerId);
 
   return {
-    manager: manager === undefined ? null : inBrief(manager),
+    manager: manager === undefined ? null : inBrief(manager, photos),
     reports: current
       .filter((one) => one.managerId === employee.id)
-      .map(inBrief)
+      .map((one) => inBrief(one, photos))
       .sort(bySurname),
   };
 }
 
-function inBrief(employee: Employee): PersonInBrief {
+/** Somebody as a profile names them, with their photo where they have one. */
+export function inBrief(
+  employee: Employee,
+  photos: ReadonlyMap<string, string> = new Map(),
+): PersonInBrief {
   return {
     employeeId: employee.id,
     firstName: employee.firstName,
     lastName: employee.lastName,
     jobTitle: employee.jobTitle,
+    photoId: photos.get(employee.id) ?? null,
   };
 }
 
@@ -232,6 +258,7 @@ export interface ChartPerson {
   firstName: string;
   lastName: string;
   jobTitle: string | null;
+  photoId: string | null;
   reports: ChartPerson[];
 }
 
@@ -264,12 +291,20 @@ export interface StaffChart {
 }
 
 /** The chart, from the manager relationships of the people who are current. */
-export function staffChartFor(employees: readonly Employee[], today: CalendarDate): StaffChart {
+export function staffChartFor(
+  employees: readonly Employee[],
+  today: CalendarDate,
+  photos: readonly PhotoOnRecord[] = [],
+): StaffChart {
   const chart = buildOrgChart(employees.filter((employee) => isCurrentOn(employee, today)));
+  const photoIds = photoIdsOf(photos);
 
   return {
     today,
-    lines: chart.roots.map((root) => ({ standing: root.standing, top: branchFrom(root.node) })),
+    lines: chart.roots.map((root) => ({
+      standing: root.standing,
+      top: branchFrom(root.node, photoIds),
+    })),
     total: chart.total,
   };
 }
@@ -279,15 +314,15 @@ export function staffChartFor(employees: readonly Employee[], today: CalendarDat
  *
  * An explicit stack rather than recursion, for the reason the builder has one.
  */
-function branchFrom(top: OrgChartNode): ChartPerson {
-  const root = personOnTheChart(top.employee);
+function branchFrom(top: OrgChartNode, photos: ReadonlyMap<string, string>): ChartPerson {
+  const root = personOnTheChart(top.employee, photos);
   const pending: [OrgChartNode, ChartPerson][] = [[top, root]];
 
   while (pending.length > 0) {
     const [node, person] = pending.pop() as [OrgChartNode, ChartPerson];
 
     for (const report of node.reports) {
-      const drawn = personOnTheChart(report.employee);
+      const drawn = personOnTheChart(report.employee, photos);
 
       person.reports.push(drawn);
       pending.push([report, drawn]);
@@ -297,12 +332,13 @@ function branchFrom(top: OrgChartNode): ChartPerson {
   return root;
 }
 
-function personOnTheChart(employee: Employee): ChartPerson {
+function personOnTheChart(employee: Employee, photos: ReadonlyMap<string, string>): ChartPerson {
   return {
     employeeId: employee.id,
     firstName: employee.firstName,
     lastName: employee.lastName,
     jobTitle: employee.jobTitle,
+    photoId: photos.get(employee.id) ?? null,
     reports: [],
   };
 }
