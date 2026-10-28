@@ -46,6 +46,9 @@ import { NotificationService } from '../../src/apps/leave/notification/notificat
 import { SignInService } from '../../src/core/identity/sign-in/sign-in.service.js';
 import { AwayTodayService } from '../../src/apps/leave/team/away-today.service.js';
 import { DirectoryService } from '../../src/apps/directory/directory.service.js';
+import { PhotoRepository } from '../../src/apps/directory/photo.db.js';
+import { PhotoService } from '../../src/apps/directory/photo.service.js';
+import sharp from 'sharp';
 import { EmployeeService } from '../../src/core/organisation/employee/employee.service.js';
 import { LeaverReports } from '../../src/core/organisation/employee/leaver-reports.job.js';
 import type { Directory } from '../../src/apps/directory/directory.js';
@@ -89,6 +92,8 @@ let requests: LeaveRequestService;
 let people: Record<string, string>;
 let annualId: string;
 let y2026: string;
+/** Where photos go, so a test can see what was kept and what was removed. */
+const storage = new InMemoryStorage();
 
 beforeAll(async () => {
   db = databaseFor(testDatabaseUrl);
@@ -152,7 +157,8 @@ beforeAll(async () => {
     holidays: new HolidayRepository(db),
     patterns: new WorkPatternRepository(db),
     holidayRecalculations: holidayRecalculationService(db, guard, balances),
-    storage: new InMemoryStorage(),
+    storage,
+    photos: new PhotoRepository(db),
     scanner: new SignatureScanner(),
     accounts,
     roles,
@@ -174,6 +180,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   denials.clear();
+  storage.reset();
 
   await admin.query('TRUNCATE leave_balance');
   await admin.query(
@@ -255,6 +262,7 @@ describe('who is in it', () => {
       'firstName',
       'jobTitle',
       'lastName',
+      'photo',
       'workEmail',
       'workMobile',
     ]);
@@ -567,6 +575,7 @@ describe('a colleague’s profile', () => {
       'lastName',
       'manager',
       'notListed',
+      'photo',
       'reports',
       'workEmail',
       'workMobile',
@@ -728,6 +737,290 @@ describe('changing somebody else’s profile', () => {
   });
 });
 
+describe('a profile photo', () => {
+  it('shows in the list at thumbnail size and on the profile at profile size', async () => {
+    const response = await putPhoto(people.officer, people.officer, await aPhoto());
+
+    expect(response.status).toBe(201);
+
+    const listed = (await directoryAs(people.partTimer)).people.find(
+      (one) => one.employeeId === people.officer,
+    );
+    const mine = await profileAs(people.officer);
+
+    expect(listed?.photo).not.toBeNull();
+    expect(listed?.photo).toEqual(mine.photo);
+
+    const thumbnail = await sharp(
+      await imageAt(listed?.photo?.thumbnail, people.partTimer),
+    ).metadata();
+    const profile = await sharp(await imageAt(mine.photo?.profile, people.officer)).metadata();
+
+    expect([thumbnail.format, thumbnail.width, thumbnail.height]).toEqual(['webp', 128, 128]);
+    expect([profile.format, profile.width, profile.height]).toEqual(['webp', 512, 512]);
+  });
+
+  it('keeps nothing the camera wrote: no EXIF, no location, no colour profile', async () => {
+    const uploaded = await aPhoto({ withLocation: true });
+
+    expect((await sharp(uploaded).metadata()).exif).toBeDefined();
+
+    await putPhoto(people.officer, people.officer, uploaded);
+    const { photo } = await profileAs(people.officer);
+
+    for (const address of [photo?.thumbnail, photo?.profile]) {
+      const kept = await imageAt(address, people.officer);
+      const metadata = await sharp(kept).metadata();
+
+      expect(metadata.exif).toBeUndefined();
+      expect(metadata.xmp).toBeUndefined();
+      expect(metadata.icc).toBeUndefined();
+      expect(kept.includes(Buffer.from('Accra'))).toBe(false);
+    }
+  });
+
+  it('turns a photo the camera stored on its side the right way up before cutting it', async () => {
+    /* 600 by 300 on disk, recorded as rotated a quarter turn: 300 by 600 as it is seen. */
+    const sideways = await sharp({
+      create: { width: 600, height: 300, channels: 3, background: '#808080' },
+    })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+
+    /* A crop that only fits a 300 wide picture, so a photo left on its side would not fit it. */
+    expect((await putPhoto(people.officer, people.officer, sideways, '0,300,300')).status).toBe(
+      201,
+    );
+  });
+
+  it('cuts the square the person chose', async () => {
+    /* Red on the left half, blue on the right. */
+    const halves = await sharp({
+      create: { width: 800, height: 400, channels: 3, background: '#ff0000' },
+    })
+      .composite([
+        {
+          input: { create: { width: 400, height: 400, channels: 3, background: '#0000ff' } },
+          left: 400,
+          top: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
+
+    await putPhoto(people.officer, people.officer, halves, '400,0,400');
+
+    const { photo } = await profileAs(people.officer);
+    const { data } = await sharp(await imageAt(photo?.profile, people.officer))
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    /* The first pixel, red, green and blue. */
+    expect(data[0]).toBeLessThan(30);
+    expect(data[2]).toBeGreaterThan(220);
+  });
+
+  it('records both sizes’ keys, dimensions, the type, checksums, and who put it up when', async () => {
+    const before = new Date();
+
+    await putPhoto(people.officer, people.officer, await aPhoto());
+
+    const { rows } = await admin.query<Record<string, unknown>>(
+      'SELECT * FROM employee_photo WHERE employee_id = $1',
+      [people.officer],
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      content_type: 'image/webp',
+      thumbnail_width: 128,
+      thumbnail_height: 128,
+      profile_width: 512,
+      profile_height: 512,
+      uploaded_by_employee_id: people.officer,
+    });
+    expect(rows[0].thumbnail_key).toMatch(/^[0-9a-f]{64}$/);
+    expect(rows[0].profile_key).toMatch(/^[0-9a-f]{64}$/);
+    expect(storage.has(rows[0].thumbnail_key as string)).toBe(true);
+    expect(storage.has(rows[0].profile_key as string)).toBe(true);
+    expect(rows[0].thumbnail_checksum_sha256).toMatch(/^[0-9a-f]{64}$/);
+    expect((rows[0].uploaded_at as Date).getTime()).toBeGreaterThanOrEqual(
+      before.getTime() - 5_000,
+    );
+  });
+
+  it('is served to nobody without a session', async () => {
+    await putPhoto(people.officer, people.officer, await aPhoto());
+    const { photo } = await profileAs(people.officer);
+
+    expect((await fetch(`${origin}${photo?.thumbnail ?? ''}`)).status).toBe(401);
+  });
+
+  it('is kept by the browser for a year, privately, and answered 304 when it asks again', async () => {
+    await putPhoto(people.officer, people.officer, await aPhoto());
+    const { photo } = await profileAs(people.officer);
+
+    const first = await get(photo?.thumbnail ?? '', people.partTimer);
+
+    expect(first.status).toBe(200);
+    expect(first.headers.get('content-type')).toBe('image/webp');
+    expect(first.headers.get('cache-control')).toBe('private, max-age=31536000, immutable');
+    expect(first.headers.get('x-content-type-options')).toBe('nosniff');
+
+    const etag = first.headers.get('etag') ?? '';
+
+    expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+
+    const again = await fetch(`${origin}${photo?.thumbnail ?? ''}`, {
+      headers: {
+        cookie: `${SESSION_COOKIE}=${mintSession(people.partTimer, SECRET)}`,
+        'if-none-match': etag,
+      },
+    });
+
+    expect(again.status).toBe(304);
+  });
+
+  it('replaced, has a new address, and the old files are gone', async () => {
+    await putPhoto(people.officer, people.officer, await aPhoto());
+    const old = (await profileAs(people.officer)).photo;
+    const oldKeys = await keysOf(people.officer);
+
+    await putPhoto(people.officer, people.officer, await aPhoto({ colour: '#204080' }));
+    const replaced = (await profileAs(people.officer)).photo;
+
+    expect(replaced?.thumbnail).not.toBe(old?.thumbnail);
+    expect(oldKeys.every((key) => !storage.has(key))).toBe(true);
+    expect(storage.size).toBe(2);
+    expect((await get(old?.thumbnail ?? '', people.officer)).status).toBe(404);
+  });
+
+  it('removed, leaves the initials everywhere and no files behind', async () => {
+    await putPhoto(people.officer, people.officer, await aPhoto());
+    const { photo } = await profileAs(people.officer);
+
+    const response = await fetch(`${origin}/api/people/${people.officer}/photo`, {
+      method: 'DELETE',
+      headers: { cookie: `${SESSION_COOKIE}=${mintSession(people.officer, SECRET)}` },
+    });
+
+    expect(response.status).toBe(204);
+    expect((await profileAs(people.officer)).photo).toBeNull();
+    expect(entryOf(await directoryOn('2026-11-04'), people.officer).photoId).toBeNull();
+    expect(storage.size).toBe(0);
+    expect((await get(photo?.thumbnail ?? '', people.officer)).status).toBe(404);
+  });
+
+  it('is null for somebody who never put one up, in the list, on the chart and on profiles', async () => {
+    const directory = await directoryAs(people.officer);
+    const chart = await chartAs(people.officer);
+
+    expect(directory.people.every((one) => one.photo === null)).toBe(true);
+    expect(JSON.stringify(chart)).not.toContain('/api/photos/');
+    expect((await colleagueAs(people.officer, people.teamLead)).photo).toBeNull();
+  });
+
+  it('shows on a manager’s and a report’s brief, and on the chart', async () => {
+    await putPhoto(people.teamLead, people.teamLead, await aPhoto());
+
+    const kofi = (await profileAs(people.teamLead)).photo;
+    const asTheirReport = await profileAs(people.officer);
+
+    expect(asTheirReport.manager?.photo).toEqual(kofi);
+    expect(JSON.stringify(await chartAs(people.officer))).toContain(kofi?.thumbnail ?? 'missing');
+  });
+
+  it('refuses a file that is not a JPEG, PNG or WebP, whatever it is called, and keeps nothing', async () => {
+    const response = await putPhoto(
+      people.officer,
+      people.officer,
+      Buffer.from('%PDF-1.7\n%âãÏÓ\n1 0 obj\n'),
+      undefined,
+      'image/jpeg',
+    );
+    const body = (await response.json()) as { error: string; field: string; message: string };
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('PhotoTypeNotAccepted');
+    expect(body.field).toBe('file');
+    expect(body.message).toContain('JPEG, PNG or WebP');
+    expect(storage.size).toBe(0);
+  });
+
+  it('refuses a GIF too', async () => {
+    const gif = await sharp({
+      create: { width: 200, height: 200, channels: 3, background: '#fff' },
+    })
+      .gif()
+      .toBuffer();
+
+    expect(
+      ((await (await putPhoto(people.officer, people.officer, gif)).json()) as { error: string })
+        .error,
+    ).toBe('PhotoTypeNotAccepted');
+  });
+
+  it('refuses a file over 8 MB with a 413 that says the limit', async () => {
+    const response = await putPhoto(
+      people.officer,
+      people.officer,
+      Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(9 * 1024 * 1024)]),
+    );
+    const body = (await response.json()) as { error: string; message: string };
+
+    expect(response.status).toBe(413);
+    expect(body.error).toBe('PhotoTooLarge');
+    expect(body.message).toContain('the limit is 8 MB');
+  });
+
+  it('refuses a photo too small to show clearly', async () => {
+    const tiny = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#fff' } })
+      .png()
+      .toBuffer();
+    const response = await putPhoto(people.officer, people.officer, tiny);
+
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: string }).error).toBe('PhotoTooSmall');
+  });
+
+  it('is put up by its owner alone: anybody else, HR included, is a 403 and logged', async () => {
+    const photo = await aPhoto();
+
+    expect((await putPhoto(people.officer, people.partTimer, photo)).status).toBe(403);
+    expect((await putPhoto(people.hrOfficer, people.officer, photo)).status).toBe(403);
+    expect(denials.last()).toMatchObject({ action: 'editProfile', subject: people.officer });
+    expect(storage.size).toBe(0);
+  });
+
+  it('of a leaver is a 404 to anybody but HR, the same 404 as a photo that is nobody’s', async () => {
+    /* Put up before they left: a leaver has no session to put one up with now. */
+    await new PhotoService(
+      guard,
+      new PhotoRepository(db),
+      new EmployeeRepository(db),
+      storage,
+    ).upload(signedInAs(people.leaver, { roles: ['EMPLOYEE'], isManager: false }), people.leaver, {
+      content: await aPhoto(),
+      crop: undefined,
+    });
+
+    const [{ id }] = (
+      await admin.query<{ id: string }>('SELECT id FROM employee_photo WHERE employee_id = $1', [
+        people.leaver,
+      ])
+    ).rows;
+
+    const refused = await get(`/api/photos/${id}/thumbnail`, people.officer);
+    const nobody = await get('/api/photos/999999/thumbnail', people.officer);
+    const garbage = await get('/api/photos/not-a-number/huge', people.officer);
+
+    expect([refused.status, nobody.status, garbage.status]).toEqual([404, 404, 404]);
+    expect(await refused.json()).toEqual(await nobody.json());
+    expect((await get(`/api/photos/${id}/thumbnail`, people.hrOfficer)).status).toBe(200);
+  });
+});
+
 describe('who is away today', () => {
   it('is somebody on agreed leave, with the working day they are back', async () => {
     await grant(people.officer, 20);
@@ -766,6 +1059,11 @@ describe('who is away today', () => {
 
 /* --------------------------------------------------------------------------- helpers */
 
+interface JsonPhoto {
+  thumbnail: string;
+  profile: string;
+}
+
 interface JsonEntry {
   employeeId: string;
   firstName: string;
@@ -776,11 +1074,75 @@ interface JsonEntry {
   backOn: string | null;
   workMobile: string | null;
   description: string | null;
+  photo: JsonPhoto | null;
 }
 
 interface JsonProfile extends JsonEntry {
   startDate: string;
-  manager: { employeeId: string; firstName: string; lastName: string; jobTitle: string } | null;
+  manager: {
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
+    photo: JsonPhoto | null;
+  } | null;
+}
+
+/**
+ * A JPEG straight off a phone, as far as the server can tell: 1200 by 900 with an EXIF block,
+ * and a GPS position and a place name in it where asked for.
+ */
+async function aPhoto(options: { withLocation?: boolean; colour?: string } = {}): Promise<Buffer> {
+  const image = sharp({
+    create: { width: 1200, height: 900, channels: 3, background: options.colour ?? '#c08040' },
+  }).jpeg();
+
+  return (
+    options.withLocation
+      ? image.withExifMerge({
+          IFD0: { Make: 'PhoneCo', Model: 'Phone 12', ImageDescription: 'Home, Accra' },
+          IFD3: { GPSLatitudeRef: 'N', GPSLatitude: '5/1 36/1 0/1' },
+        })
+      : image
+  ).toBuffer();
+}
+
+/** Somebody, signed in as `as`, putting up a photo on `whose` record. */
+function putPhoto(
+  as: string,
+  whose: string,
+  content: Buffer,
+  crop?: string,
+  contentType = 'image/jpeg',
+): Promise<Response> {
+  return fetch(`${origin}/api/people/${whose}/photo`, {
+    method: 'PUT',
+    headers: {
+      cookie: `${SESSION_COOKIE}=${mintSession(as, SECRET)}`,
+      'content-type': contentType,
+      ...(crop === undefined ? {} : { 'x-photo-crop': crop }),
+    },
+    body: content,
+  });
+}
+
+/** The bytes at a photo's address, read as somebody. */
+async function imageAt(address: string | undefined, as: string): Promise<Buffer> {
+  const response = await get(address ?? '/api/photos/none', as);
+
+  expect(response.status).toBe(200);
+
+  return Buffer.from(await response.arrayBuffer());
+}
+
+/** The storage keys on somebody's photo row. */
+async function keysOf(employeeId: string): Promise<string[]> {
+  const { rows } = await admin.query<{ thumbnail_key: string; profile_key: string }>(
+    'SELECT thumbnail_key, profile_key FROM employee_photo WHERE employee_id = $1',
+    [employeeId],
+  );
+
+  return rows.flatMap((row) => [row.thumbnail_key, row.profile_key]);
 }
 
 interface JsonColleague extends JsonEntry {
@@ -876,6 +1238,7 @@ function directoryOn(today: string): Promise<Directory> {
     guard,
     employees,
     new DepartmentRepository(db),
+    new PhotoRepository(db),
     new AwayTodayService(
       new LeaveRequestRepository(db),
       employees,

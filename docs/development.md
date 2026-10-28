@@ -378,6 +378,25 @@ resolved. NFR SEC 04.
 These files are medical certificates. A directory reachable by URL makes every
 one of them public.
 
+### Profile photos
+
+Photos go through the same `Storage`, and `sharp` is the one thing that reads them:
+`server/src/apps/directory/photo-image.ts` and nothing else imports it.
+
+**What is kept is never what was uploaded.** The upload is decoded, turned the right
+way up, cut to the square the person chose, and written again as WebP at 128 and 512
+pixels. Re-encoding is what strips it: sharp writes no metadata unless asked, so the
+camera's EXIF block, GPS position included, is left behind with the original bytes,
+which are never stored.
+
+**A photo's address names the photo, not the person.** `/api/photos/<id>/<size>` is
+served behind `identify()` with `Cache-Control: private, max-age=31536000, immutable`.
+Replacing a photo writes a new row with a new id, so an address never comes to mean a
+different picture and browsers can keep each one for a year.
+
+`sharp` ships prebuilt binaries per platform. An `npm install` on one OS and a deploy
+to another needs `npm install --os=linux --cpu=x64 sharp` (or an install on the target).
+
 ### Virus scanning
 
 Every attachment goes through the `Scanner` interface in `server/src/core/scanning`

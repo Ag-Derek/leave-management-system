@@ -389,6 +389,29 @@ export interface LeaveRequestAttachmentTable {
   file_deleted_at: ColumnType<Date | null, never, Date>;
 }
 
+/** A person's photo, at the two sizes it is drawn at. Never updated; replaced by a new row. */
+export interface EmployeePhotoTable {
+  id: Generated<string>;
+  employee_id: ColumnType<string, string, never>;
+  /** What both sizes are served as. */
+  content_type: ColumnType<string, string, never>;
+  /** The handles storage issued. NFR SEC 04. */
+  thumbnail_key: ColumnType<string, string, never>;
+  thumbnail_width: ColumnType<number, number, never>;
+  thumbnail_height: ColumnType<number, number, never>;
+  thumbnail_size_bytes: ColumnType<number, number, never>;
+  thumbnail_checksum_sha256: ColumnType<string, string, never>;
+  profile_key: ColumnType<string, string, never>;
+  profile_width: ColumnType<number, number, never>;
+  profile_height: ColumnType<number, number, never>;
+  profile_size_bytes: ColumnType<number, number, never>;
+  profile_checksum_sha256: ColumnType<string, string, never>;
+  /** Stamped by the trigger, never written by the application. */
+  uploaded_by: ColumnType<string, never, never>;
+  uploaded_by_employee_id: ColumnType<string | null, never, never>;
+  uploaded_at: Timestamp;
+}
+
 /** A short-lived address for one attachment's bytes. NFR SEC 04, NFR SEC 06. */
 export interface AttachmentDownloadLinkTable {
   id: Generated<string>;
@@ -624,6 +647,7 @@ export interface Database {
   leave_request: LeaveRequestTable;
   leave_request_attachment: LeaveRequestAttachmentTable;
   leave_request_decision: LeaveRequestDecisionTable;
+  employee_photo: EmployeePhotoTable;
   leave_request_draft: LeaveRequestDraftTable;
   leave_plan: LeavePlanTable;
   leave_request_reassignment: LeaveRequestReassignmentTable;

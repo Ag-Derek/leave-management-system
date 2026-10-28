@@ -11,8 +11,11 @@ import {
   directoryFor,
   type DirectoryProfile,
   entryFor,
+  inBrief,
   isCurrentOn,
   type MyProfile,
+  photoIdsOf,
+  type PhotoLookup,
   reportingLineOf,
   type StaffChart,
   staffChartFor,
@@ -29,6 +32,8 @@ export class DirectoryService {
     private readonly employees: EmployeeRepository,
     /** The name each person's department goes by. */
     private readonly departments: DepartmentRepository,
+    /** Who has a photo up, so the screen knows whose to fetch and whose initials to draw. */
+    private readonly photos: PhotoLookup,
     /** Who is on agreed leave. Absent, nobody is marked away. */
     private readonly away?: WhoIsAway,
     /** Today, in UTC, which is the day the database's `current_date` is having. NFR DAT 03. */
@@ -56,9 +61,13 @@ export class DirectoryService {
     ]);
 
     const employees = everybody.filter((one) => isCurrentOn(one, today));
-    const profiles = await this.employees.profilesOf(employees.map((one) => one.id));
+    const ids = employees.map((one) => one.id);
+    const [profiles, photos] = await Promise.all([
+      this.employees.profilesOf(ids),
+      this.photos.photosOf(ids),
+    ]);
 
-    return directoryFor({ employees, departments, away, profiles, today });
+    return directoryFor({ employees, departments, away, profiles, photos, today });
   }
 
   /**
@@ -70,7 +79,13 @@ export class DirectoryService {
   async chart(actor: Actor): Promise<StaffChart> {
     this.guard.enforce(directoryPolicy.chart(actor));
 
-    return staffChartFor(await this.employees.list(), this.today());
+    const today = this.today();
+    const employees = await this.employees.list();
+    const photos = await this.photos.photosOf(
+      employees.filter((one) => isCurrentOn(one, today)).map((one) => one.id),
+    );
+
+    return staffChartFor(employees, today, photos);
   }
 
   /**
@@ -96,11 +111,20 @@ export class DirectoryService {
 
     this.guard.enforce(directoryPolicy.readProfile(actor, employee.id, reason === null));
 
-    const [department, away, profiles] = await Promise.all([
+    /* Their own photo, and the photos of whoever is on their reporting line. */
+    const named = everybody
+      .filter(
+        (one) =>
+          one.id === employee.id || one.id === employee.managerId || one.managerId === employee.id,
+      )
+      .map((one) => one.id);
+
+    const [department, away, profiles, photos] = await Promise.all([
       this.departments.findById(employee.departmentId),
       /* Nobody who is not here is away. */
       this.away === undefined || reason !== null ? [] : this.away.awayOn(today),
       this.employees.profilesOf([employee.id]),
+      this.photos.photosOf(named).then(photoIdsOf),
     ]);
 
     return {
@@ -109,8 +133,9 @@ export class DirectoryService {
         department,
         away.find((one) => one.employeeId === employee.id)?.backOn,
         profiles[0],
+        photos.get(employee.id),
       ),
-      ...reportingLineOf(employee, everybody, today),
+      ...reportingLineOf(employee, everybody, today, photos),
       notListed:
         reason === null
           ? null
@@ -134,11 +159,14 @@ export class DirectoryService {
 
     const today = this.today();
 
-    const [department, away, profiles, manager] = await Promise.all([
+    const [department, away, profiles, manager, photos] = await Promise.all([
       this.departments.findById(employee.departmentId),
       this.away === undefined ? [] : this.away.awayOn(today),
       this.employees.profilesOf([employee.id]),
       employee.managerId === null ? undefined : this.employees.findById(employee.managerId),
+      this.photos
+        .photosOf(employee.managerId === null ? [employee.id] : [employee.id, employee.managerId])
+        .then(photoIdsOf),
     ]);
 
     return {
@@ -147,17 +175,10 @@ export class DirectoryService {
         department,
         away.find((one) => one.employeeId === employee.id)?.backOn,
         profiles[0],
+        photos.get(employee.id),
       ),
       startDate: employee.startDate,
-      manager:
-        manager === undefined
-          ? null
-          : {
-              employeeId: manager.id,
-              firstName: manager.firstName,
-              lastName: manager.lastName,
-              jobTitle: manager.jobTitle,
-            },
+      manager: manager === undefined ? null : inBrief(manager, photos),
     };
   }
 

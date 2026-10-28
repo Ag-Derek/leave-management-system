@@ -3,8 +3,8 @@
  *
  * Three fields and no others: a photo, a work mobile and a description. Everything else on
  * the record is HR's, and a request naming any of it is refused rather than half applied.
- * The photo is one of the three, but uploading one is its own piece of work, so for now it
- * is refused with a sentence saying so rather than as a field HR keeps.
+ * The photo is one of the three but is an upload rather than a field, so naming it here is
+ * refused with a sentence saying where it goes rather than as a field HR keeps.
  */
 
 /** The longest description, in characters. `employee_description_fits` holds the same. */
@@ -62,8 +62,8 @@ export function validateProfileEdit(body: unknown): ProfileEdit {
   if ('photo' in sent) {
     throw new InvalidProfile(
       'photo',
-      'Changing your photo is not available yet. Your work mobile and description can be ' +
-        'changed now.',
+      'A photo is uploaded on its own rather than sent with your other details: send the ' +
+        'image itself to /people/<your id>/photo.',
     );
   }
 

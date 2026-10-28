@@ -127,7 +127,7 @@ function Profile({ colleague, today }: { colleague: DirectoryProfile; today: str
 
       <div className="my-profile-head">
         <div className="my-profile-photo">
-          <Avatar person={colleague} />
+          <Avatar person={colleague} size="profile" />
         </div>
 
         <div className="my-profile-who">
@@ -245,7 +245,7 @@ function NotListed({ notListed }: { notListed: NonNullable<DirectoryProfile['not
   );
 }
 
-/** A manager or a report: their initials, and their name as a link to their profile. */
+/** A manager or a report: their photo or initials, and their name as a link to their profile. */
 function Someone({ person }: { person: PersonInBrief }) {
   return (
     <p className="my-profile-manager">

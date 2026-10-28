@@ -70,8 +70,13 @@ export function problemFor(error: unknown): { status: number; body: Problem } {
      number belongs to anybody — the pair of this and a silent refusal has to be one
      answer. Every other `NotFound` is about configuration, which anybody signed in may
      read anyway, so it keeps its own sentence. */
-  /* A request id too, or a colleague could walk the sequence. */
-  if (error.name === 'EmployeeNotFound' || error.name === 'LeaveRequestNotFound') {
+  /* A request id too, or a colleague could walk the sequence. A photo id too, or the address
+     of a leaver's photo would say it had once been somebody's. */
+  if (
+    error.name === 'EmployeeNotFound' ||
+    error.name === 'LeaveRequestNotFound' ||
+    error.name === 'PhotoNotFound'
+  ) {
     return { status: 404, body: { error: 'NotFound', message: NOT_AUTHORISED_MESSAGE } };
   }
 
@@ -222,6 +227,16 @@ const REFUSED_BY_A_RULE: Readonly<Record<string, number>> = {
   AttachmentTypeNotAccepted: 400,
   /** FR 12. A smaller file is the fix. */
   AttachmentTooLarge: 400,
+
+  /** A JPEG, PNG or WebP is the fix, and the message says renaming is not. */
+  PhotoTypeNotAccepted: 400,
+  /**
+   * A smaller photo is the fix. 413, the status the body parser's own refusal of the same
+   * thing carries, so one photo over the cap is one answer however far it got.
+   */
+  PhotoTooLarge: 413,
+  /** A larger photo, or zooming out, is the fix. */
+  PhotoTooSmall: 400,
   /**
    * FR 13, FR 32a. The upload is the fix, and the message names why one is wanted.
    *

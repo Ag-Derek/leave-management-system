@@ -1,6 +1,6 @@
 /** The staff directory, over HTTP. NFR DAT 03. */
 
-import { type Request, type Response, Router } from 'express';
+import express, { type NextFunction, type Request, type Response, Router } from 'express';
 import { actorOf } from '../../core/http/identify.js';
 import type {
   ChartPerson,
@@ -13,12 +13,43 @@ import type {
   StaffChart,
 } from './directory.js';
 import type { DirectoryService } from './directory.service.js';
+import { MAX_PHOTO_BYTES, type Photo, type PhotoSize, PhotoTooLarge } from './photo.js';
+import type { PhotoService } from './photo.service.js';
 
 export interface DirectoryRoutes {
   directory: DirectoryService;
+  /** Optional, so a test app without photos has no photo routes and shows everybody's initials. */
+  photos?: PhotoService;
 }
 
-export function directoryRoutes({ directory }: DirectoryRoutes): Router {
+/**
+ * How long a browser may keep an image without asking again: a year, the longest any of them
+ * honours. Safe because the photo's id is in its address and a new photo is a new id, so an
+ * address never comes to mean a different picture.
+ */
+const PHOTO_CACHE_SECONDS = 365 * 24 * 60 * 60;
+
+/** The raw body parser for an upload, capped at the photo limit. */
+const photoBytes = express.raw({ type: () => true, limit: MAX_PHOTO_BYTES });
+
+/**
+ * The upload body, with a photo over the cap refused in a photo's own words.
+ *
+ * The parser refuses it before any route runs, in its own shape, and the error handler would
+ * otherwise answer it with an attachment's limit.
+ */
+function photoBody(request: Request, response: Response, next: NextFunction): void {
+  photoBytes(request, response, (error?: unknown) => {
+    if ((error as { type?: unknown } | undefined)?.type === 'entity.too.large') {
+      next(new PhotoTooLarge(Number((error as { length?: unknown }).length) || 0));
+      return;
+    }
+
+    next(error);
+  });
+}
+
+export function directoryRoutes({ directory, photos }: DirectoryRoutes): Router {
   const routes = Router();
 
   /** Everybody at the company today. Behind identify, so a session is needed to ask. */
@@ -82,7 +113,109 @@ export function directoryRoutes({ directory }: DirectoryRoutes): Router {
     },
   );
 
+  if (photos !== undefined) {
+    photoRoutes(routes, photos);
+  }
+
   return routes;
+}
+
+function photoRoutes(routes: Router, photos: PhotoService): void {
+  /**
+   * Puts up a photo, replacing any already there. Only its owner may.
+   *
+   * **The body is the image**, as with attachments: one file, no multipart form. What it is
+   * is read from the bytes. The square to cut is `X-Photo-Crop: left,top,side`, in pixels of
+   * the image the right way up; without it, the largest square in the middle.
+   */
+  routes.put(
+    '/people/:employeeId/photo',
+    photoBody,
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void photos
+        .upload(actorOf(response), request.params.employeeId, {
+          content: request.body,
+          crop: request.get('x-photo-crop'),
+          claimedContentType: request.get('content-type') ?? '',
+        })
+        .then((photo) => {
+          response.status(201).json(uploadedAsJson(photo));
+        })
+        .catch(next);
+    },
+  );
+
+  /**
+   * Takes the photo down, leaving the initials. Only its owner may.
+   *
+   * `:id` rather than `:employeeId`, so that the check for a route deleting an employee
+   * (tests/unit/employee-never-deleted.test.ts) has nothing here to mistake for one.
+   */
+  routes.delete(
+    '/people/:id/photo',
+    (request: Request<{ id: string }>, response: Response, next) => {
+      void photos
+        .remove(actorOf(response), request.params.id)
+        .then(() => {
+          response.status(204).end();
+        })
+        .catch(next);
+    },
+  );
+
+  /**
+   * One size of one photo. Behind identify, so only somebody signed in gets an image, and
+   * only of somebody whose profile they may see.
+   *
+   * `private` so that no shared cache between here and the browser keeps a copy, and
+   * `immutable` because the address names the photo rather than the person. The checksum is
+   * the ETag, so a browser that does ask again is answered 304 with no body.
+   */
+  routes.get(
+    '/photos/:photoId/:size',
+    (request: Request<{ photoId: string; size: string }>, response: Response, next) => {
+      void photos
+        .read(actorOf(response), request.params.photoId, request.params.size)
+        .then(({ photo, rendition, content }) => {
+          response
+            .status(200)
+            .set('Content-Type', photo.contentType)
+            .set('X-Content-Type-Options', 'nosniff')
+            .set('Cache-Control', `private, max-age=${String(PHOTO_CACHE_SECONDS)}, immutable`)
+            .set('ETag', `"${rendition.checksumSha256}"`)
+            .set('Content-Disposition', 'inline')
+            .send(content);
+        })
+        .catch(next);
+    },
+  );
+}
+
+/**
+ * Where somebody's photo is, at each size, or null for their initials.
+ *
+ * Paths rather than absolute addresses, as for attachment links, so nothing here decides what
+ * host the application answers on.
+ */
+function photoAsJson(photoId: string | null): unknown {
+  if (photoId === null) {
+    return null;
+  }
+
+  const at = (size: PhotoSize) => `/api/photos/${encodeURIComponent(photoId)}/${size}`;
+
+  return { thumbnail: at('thumbnail'), profile: at('profile') };
+}
+
+/** A photo just put up: where it is, and what was made. The storage keys stay here. */
+function uploadedAsJson(photo: Photo): unknown {
+  return {
+    photo: photoAsJson(photo.id),
+    contentType: photo.contentType,
+    thumbnail: { width: photo.thumbnail.width, height: photo.thumbnail.height },
+    profile: { width: photo.profile.width, height: photo.profile.height },
+    uploadedAt: photo.uploadedAt.toISOString(),
+  };
 }
 
 /** Somebody's own profile. Only ever sent to the person it is. */
@@ -101,6 +234,7 @@ function briefAsJson(person: PersonInBrief): unknown {
     firstName: person.firstName,
     lastName: person.lastName,
     jobTitle: person.jobTitle,
+    photo: photoAsJson(person.photoId),
   };
 }
 
@@ -131,6 +265,8 @@ function entryAsJson(entry: DirectoryEntry): unknown {
     /** What they keep themselves. Null where they have said nothing. */
     workMobile: entry.workMobile,
     description: entry.description,
+    /** Null where they have none, and the screen draws their initials. */
+    photo: photoAsJson(entry.photoId),
   };
 }
 
@@ -177,6 +313,7 @@ function personAsJson(person: ChartPerson): unknown {
     firstName: person.firstName,
     lastName: person.lastName,
     jobTitle: person.jobTitle,
+    photo: photoAsJson(person.photoId),
     reports: person.reports.map(personAsJson),
   };
 }
