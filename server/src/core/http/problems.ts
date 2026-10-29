@@ -423,6 +423,29 @@ const REFUSED_BY_A_RULE: Readonly<Record<string, number>> = {
   OverridesAreSwitchedOff: 409,
   ChiefExecutiveHasLeft: 409,
   NoChiefExecutiveNamed: 409,
+
+  /**
+   * FR 01, FR 02, FR 04, FR 06. HR adding and changing employee records.
+   *
+   * 409 for each that a row already standing refuses: an address or a number somebody else
+   * has, a manager who has left or is not here, a second head, a loop, a closed team, a person
+   * who still has reports. Each sentence names who or what is in the way.
+   */
+  DuplicateEmployeeNumber: 409,
+  DuplicateWorkEmail: 409,
+  ManagerHasLeft: 409,
+  ManagerNotCurrent: 409,
+  SecondRootEmployee: 409,
+  ManagerCycle: 409,
+  AlreadyTerminated: 409,
+  DepartmentDeactivated: 409,
+  DefaultWorkPatternRequired: 409,
+  StillHasReports: 409,
+  /** NFR SEC 01. The address is the fix. */
+  NotACompanyEmail: 400,
+  /** Choosing somebody to move, or somebody else to move them to, is the fix. */
+  NobodyToReassign: 400,
+  CannotTakeTheirOwnReports: 400,
 };
 
 /**

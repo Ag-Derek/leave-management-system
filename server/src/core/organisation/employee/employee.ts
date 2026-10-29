@@ -100,6 +100,9 @@ export class InvalidEmployee extends Error {
 }
 
 export class DuplicateEmployeeNumber extends Error {
+  /** The box a form puts the message beside. NFR USA 03. */
+  readonly field = 'employeeNumber';
+
   constructor(employeeNumber: string) {
     super(`Employee number ${employeeNumber} already belongs to somebody else.`);
     this.name = 'DuplicateEmployeeNumber';
@@ -107,6 +110,8 @@ export class DuplicateEmployeeNumber extends Error {
 }
 
 export class DuplicateWorkEmail extends Error {
+  readonly field = 'workEmail';
+
   constructor(workEmail: string) {
     super(`${workEmail} is already the work address of another employee.`);
     this.name = 'DuplicateWorkEmail';

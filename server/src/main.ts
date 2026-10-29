@@ -288,8 +288,8 @@ const directoryEmails = new DirectoryEmailService(
 );
 
 /**
- * The door every change to a record goes through. Built once, so every caller — today the
- * leavers' reports job, and HR's screens when they come — tells the directory's emails.
+ * The door every change to a record goes through, built once and shared by the Administration
+ * tab and the job that moves a leaver's reports, so every one of them tells the directory's emails.
  * The leave service is what a moved report's pending requests follow. FR 07.
  */
 const employeeRecords = new EmployeeService(
@@ -318,6 +318,7 @@ const app = buildApp({
   /** FR 32g. */
   events,
   employees,
+  employeeRecords,
   departments,
   types,
   years,
@@ -410,6 +411,7 @@ const reconciliation = new BalanceReconciliation(
 );
 const reminders = new DailyApproverReminders(leaveRequests, notifications);
 const undelivered = new UndeliveredNotices(notifications);
+/* The same door HR's changes go through. FR 07. */
 const leaverReports = new LeaverReports(employeeRecords);
 const dailyDirectoryEmails = new DailyDirectoryEmails(directoryEmails);
 

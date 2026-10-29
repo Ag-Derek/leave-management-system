@@ -1225,6 +1225,336 @@ a.portal-app:hover {
   font-weight: 600;
 }
 
+/* ------------------------------------------------------- HR's Administration tab */
+
+.admin-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+
+.admin-heading h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.admin-heading p {
+  margin: 0.2rem 0 0;
+  font-size: 0.875rem;
+}
+
+/* A link that does what a button does, so it looks like the primary one. */
+.admin-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-small);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.admin-add:hover {
+  filter: brightness(1.08);
+}
+
+.admin-add svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* A starter with no login, and a leaver whose login still opens: the two rows to act on. */
+.admin-table tbody tr.is-waiting {
+  background: color-mix(in srgb, var(--away) 7%, var(--card));
+}
+
+.admin-table tbody tr.is-alarm {
+  background: color-mix(in srgb, var(--warn) 6%, var(--card));
+}
+
+.admin-dates {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.admin-dates.is-starting {
+  color: var(--away-ink);
+  font-weight: 600;
+}
+
+.tag.access {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  padding: 0.25rem 0.7rem;
+}
+
+.tag.access::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.tag.access.is-waiting {
+  color: var(--away-ink);
+  background: color-mix(in srgb, var(--away) 16%, var(--card));
+}
+
+.tag.access.is-alarm {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--card));
+}
+
+.admin-footnote {
+  max-width: 44rem;
+  margin-top: var(--gap);
+  font-size: 0.8125rem;
+}
+
+.admin-banner,
+.admin-what-happens {
+  display: flex;
+  gap: 0.75rem;
+  margin: 0 0 var(--gap-lg);
+}
+
+.admin-banner {
+  border-left-color: var(--away);
+  background: color-mix(in srgb, var(--away) 8%, var(--card));
+}
+
+.admin-banner > svg,
+.admin-what-happens > svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  color: var(--ink-soft);
+}
+
+.admin-banner p,
+.admin-what-happens p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.admin-banner p + p,
+.admin-what-happens p + p {
+  margin-top: 0.25rem;
+}
+
+/* One record, added or changed. */
+.admin-record {
+  max-width: 52rem;
+}
+
+.admin-record > h2 {
+  margin: 0 0 0.35rem;
+}
+
+.admin-record > .muted {
+  margin: 0 0 var(--gap-lg);
+}
+
+.admin-record-head {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin-bottom: var(--gap-lg);
+}
+
+.admin-record-head h2,
+.admin-record-head p {
+  margin: 0;
+}
+
+.admin-record-standing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.4rem !important;
+  font-size: 0.875rem;
+}
+
+.admin-form,
+.admin-panel {
+  margin-bottom: var(--gap-lg);
+  padding: var(--gap-lg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.admin-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap) var(--gap-lg);
+  margin: 0 0 var(--gap-lg);
+  padding: 0;
+  border: none;
+}
+
+.admin-form legend,
+.admin-panel h3 {
+  margin: 0 0 0.75rem;
+  padding: 0;
+  color: var(--ink-faint);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.admin-field > label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.admin-field input,
+.admin-field select {
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.admin-field small {
+  font-size: 0.8125rem;
+}
+
+.admin-form .error {
+  color: var(--warn);
+}
+
+.admin-actions,
+.admin-move {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.admin-actions button,
+.admin-move button,
+.admin-cancel {
+  min-height: 2.75rem;
+}
+
+.admin-cancel {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-small);
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.admin-panel > p {
+  margin: 0 0 var(--gap);
+  font-size: 0.875rem;
+}
+
+.admin-reports {
+  margin: 0 0 var(--gap);
+  padding: 0;
+  list-style: none;
+}
+
+.admin-reports li + li {
+  border-top: 1px solid var(--line);
+}
+
+.admin-reports label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+.admin-reports small {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+
+.admin-move label {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.admin-move select {
+  min-height: 2.75rem;
+}
+
+.admin-history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.admin-history > li {
+  padding: 0.75rem 0;
+}
+
+.admin-history > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.admin-history p {
+  margin: 0;
+}
+
+.admin-history ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--ink-soft);
+}
+
+.admin-history s {
+  color: var(--ink-faint);
+}
+
+@media (max-width: 40rem) {
+  .admin-form fieldset {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-form,
+  .admin-panel {
+    padding: var(--gap);
+  }
+
+  /* Dates and access stay; the department is on the record. */
+  .admin-table th:nth-child(2),
+  .admin-table td:nth-child(2) {
+    display: none;
+  }
+}
+
 .view-in-chart {
   display: inline-flex;
   align-items: center;

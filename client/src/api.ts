@@ -2188,6 +2188,11 @@ export interface Directory {
   people: DirectoryPerson[];
   /** The departments somebody listed is in, by name. */
   departments: DirectoryDepartment[];
+  /**
+   * Which parts of the Administration tab to draw, as the server's policies answered. Not
+   * roles: the routes behind the tab ask again whatever is drawn.
+   */
+  may: { administer: boolean; seeLoginsToCreate: boolean };
 }
 
 /** Everybody at the company today. The searching is the page's, over this one answer. */
@@ -2250,6 +2255,167 @@ export interface StaffChart {
 /** Who reports to whom among everybody current, built afresh from the records on each ask. */
 export async function staffChart(): Promise<StaffChart> {
   return request<StaffChart>('GET', '/api/directory/chart');
+}
+
+/** ------------------------------------------------ HR's Administration tab. Issue 222. */
+
+/** Where somebody stands today. `LEAVING` is still here, with an exit date ahead. */
+export type Standing = 'CURRENT' | 'STARTING' | 'LEAVING' | 'LEFT' | 'SUSPENDED';
+
+/** Whether they can sign in: no login yet, one that works, or one that was closed. */
+export type LoginState = 'NONE' | 'ACTIVE' | 'CLOSED';
+
+export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERN';
+
+/** Somebody named on a record: their manager, or one of their reports. */
+export interface PersonNamed {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+}
+
+/** One record, as HR's list shows it. Leavers included. */
+export interface StaffRecord extends PersonNamed {
+  employeeNumber: string;
+  workEmail: string;
+  department: DirectoryDepartment;
+  manager: PersonNamed | null;
+  workPatternId: string;
+  /** Ten characters each. */
+  startDate: string;
+  exitDate: string | null;
+  employmentType: EmploymentType;
+  employmentStatus: EmploymentStatus;
+  gender: 'MALE' | 'FEMALE' | null;
+  standing: Standing;
+  login: LoginState;
+  /** How many people still here report to them. */
+  reports: number;
+}
+
+/** A new record waiting for its login. */
+export interface LoginToCreate {
+  person: PersonNamed;
+  workEmail: string;
+  startDate: string;
+  /** Their start date is within a fortnight, or has come. */
+  soon: boolean;
+}
+
+export interface AdministrationList {
+  today: string;
+  /** By surname. */
+  records: StaffRecord[];
+  departments: DirectoryDepartment[];
+  /** Soonest start first. */
+  loginsToCreate: LoginToCreate[];
+  /** Who creates logins, so the screen can say whose job it is now. */
+  systemAdministrators: PersonNamed[];
+}
+
+/** One change to a record: the old value, the new one, who and when. */
+export interface RecordChange {
+  /** An instant, ISO 8601. */
+  at: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  by: string;
+  changes: { field: string; label: string; from: unknown; to: unknown }[];
+}
+
+/** One record, as HR opens it. */
+export interface AdministrationRecord extends StaffRecord {
+  today: string;
+  workPatternName: string;
+  /** The people still here who report to them, by surname. */
+  reportsStillHere: PersonNamed[];
+  /** Newest first. */
+  history: RecordChange[];
+}
+
+/** What the add and edit forms offer. */
+export interface AdministrationChoices {
+  today: string;
+  /** Open departments only. */
+  departments: DirectoryDepartment[];
+  /** Everybody at the company today, and nobody else. */
+  managers: PersonNamed[];
+  patterns: { id: string; name: string; isDefault: boolean }[];
+}
+
+/**
+ * The fields HR keeps, as the form sends them. Only those sent are changed; null or empty
+ * clears an optional one.
+ */
+export interface RecordFields {
+  employeeNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  workEmail?: string;
+  jobTitle?: string | null;
+  departmentId?: string;
+  /** Null only for the head of the organisation. */
+  managerId?: string | null;
+  workPatternId?: string | null;
+  startDate?: string;
+  exitDate?: string | null;
+  employmentType?: EmploymentType;
+  employmentStatus?: EmploymentStatus;
+  gender?: 'MALE' | 'FEMALE' | null;
+}
+
+/** Everybody with a record. HR only; anybody else is answered 403. */
+export async function administrationList(): Promise<AdministrationList> {
+  return request<AdministrationList>('GET', '/api/directory/admin/people');
+}
+
+export async function administrationChoices(): Promise<AdministrationChoices> {
+  return request<AdministrationChoices>('GET', '/api/directory/admin/choices');
+}
+
+export async function administrationRecord(employeeId: string): Promise<AdministrationRecord> {
+  return request<AdministrationRecord>(
+    'GET',
+    `/api/directory/admin/people/${encodeURIComponent(employeeId)}`,
+  );
+}
+
+/** New records waiting for a login. HR's and whoever creates logins. */
+export async function loginsToCreate(): Promise<LoginToCreate[]> {
+  const { loginsToCreate: waiting } = await request<{ loginsToCreate: LoginToCreate[] }>(
+    'GET',
+    '/api/directory/admin/logins-to-create',
+  );
+
+  return waiting;
+}
+
+export async function addEmployee(fields: RecordFields): Promise<AdministrationRecord> {
+  return request<AdministrationRecord>('POST', '/api/directory/admin/people', fields);
+}
+
+export async function changeEmployee(
+  employeeId: string,
+  fields: RecordFields,
+): Promise<AdministrationRecord> {
+  return request<AdministrationRecord>(
+    'PATCH',
+    `/api/directory/admin/people/${encodeURIComponent(employeeId)}`,
+    fields,
+  );
+}
+
+/** Moves some or all of somebody's reports to another manager. Null moves every one. */
+export async function reassignReports(
+  employeeId: string,
+  toManagerId: string,
+  employeeIds: string[] | null,
+): Promise<{ moved: PersonNamed[]; to: PersonNamed }> {
+  return request<{ moved: PersonNamed[]; to: PersonNamed }>(
+    'POST',
+    `/api/directory/admin/people/${encodeURIComponent(employeeId)}/reports`,
+    { toManagerId, employeeIds },
+  );
 }
 
 /**

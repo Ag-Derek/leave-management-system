@@ -5,18 +5,25 @@ import { actorOf } from '../../core/http/identify.js';
 import type {
   ChartPerson,
   DepartmentInTheDirectory,
-  Directory,
   DirectoryEntry,
+  DirectoryForReader,
   DirectoryProfile,
   MyProfile,
   PersonInBrief,
   StaffChart,
 } from './directory.js';
 import type { DirectoryService } from './directory.service.js';
+import { MAX_PHOTO_BYTES, type Photo, type PhotoSize, PhotoTooLarge } from './photo.js';
 import { readDirectoryEmail, readReceives } from './email.js';
 import type { DirectoryEmailService, EmailChoice } from './email.service.js';
-import { MAX_PHOTO_BYTES, type Photo, type PhotoSize, PhotoTooLarge } from './photo.js';
 import type { PhotoService } from './photo.service.js';
+import type { LoginToCreate, PersonNamed, RecordChange, StaffRecord } from './administration.js';
+import type {
+  AdministrationChoices,
+  AdministrationList,
+  AdministrationRecord,
+  AdministrationService,
+} from './administration.service.js';
 
 export interface DirectoryRoutes {
   directory: DirectoryService;
@@ -24,6 +31,8 @@ export interface DirectoryRoutes {
   photos?: PhotoService;
   /** Optional, so a test app without email has no email preference routes. */
   emails?: DirectoryEmailService;
+  /** HR's Administration tab. Optional, so an app built without one has no such routes. */
+  administration?: AdministrationService;
 }
 
 /**
@@ -53,8 +62,18 @@ function photoBody(request: Request, response: Response, next: NextFunction): vo
   });
 }
 
-export function directoryRoutes({ directory, photos, emails }: DirectoryRoutes): Router {
+export function directoryRoutes({
+  directory,
+  photos,
+  emails,
+  administration,
+}: DirectoryRoutes): Router {
   const routes = Router();
+
+  /* Before `/directory/people/:employeeId`, though no path here can be mistaken for one. */
+  if (administration !== undefined) {
+    administrationRoutes(routes, administration);
+  }
 
   /** Everybody at the company today. Behind identify, so a session is needed to ask. */
   routes.get('/directory', (_request: Request, response: Response, next) => {
@@ -127,6 +146,185 @@ export function directoryRoutes({ directory, photos, emails }: DirectoryRoutes):
   }
 
   return routes;
+}
+
+/**
+ * HR's Administration tab, under `/directory/admin`. Every one asks `directoryPolicy.administer`
+ * before anything else, so anybody who is not HR is answered 403 whatever the id.
+ *
+ * No DELETE: a record is never removed. FR 06.
+ */
+function administrationRoutes(routes: Router, administration: AdministrationService): void {
+  /** Everybody with a record, leavers included. Searching and filtering are the screen's. */
+  routes.get('/directory/admin/people', (_request: Request, response: Response, next) => {
+    void administration
+      .list(actorOf(response))
+      .then((list) => {
+        response.json(administrationListAsJson(list));
+      })
+      .catch(next);
+  });
+
+  /** What the add and edit forms offer: open departments, current staff, working patterns. */
+  routes.get('/directory/admin/choices', (_request: Request, response: Response, next) => {
+    void administration
+      .choices(actorOf(response))
+      .then((choices) => {
+        response.json(choicesAsJson(choices));
+      })
+      .catch(next);
+  });
+
+  /** New records waiting for a login. HR's and whoever creates logins. */
+  routes.get('/directory/admin/logins-to-create', (_request: Request, response: Response, next) => {
+    void administration
+      .loginsToCreate(actorOf(response))
+      .then((waiting) => {
+        response.json({ loginsToCreate: waiting.map(loginToCreateAsJson) });
+      })
+      .catch(next);
+  });
+
+  /** Adds somebody. 201, with the record as it now stands. */
+  routes.post('/directory/admin/people', (request: Request, response: Response, next) => {
+    void administration
+      .add(actorOf(response), request.body)
+      .then((record) => {
+        response.status(201).json(administrationRecordAsJson(record));
+      })
+      .catch(next);
+  });
+
+  routes.get(
+    '/directory/admin/people/:employeeId',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void administration
+        .record(actorOf(response), request.params.employeeId)
+        .then((record) => {
+          response.json(administrationRecordAsJson(record));
+        })
+        .catch(next);
+    },
+  );
+
+  /** Changes the fields HR keeps. Only the fields sent are changed. */
+  routes.patch(
+    '/directory/admin/people/:employeeId',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void administration
+        .edit(actorOf(response), request.params.employeeId, request.body)
+        .then((record) => {
+          response.json(administrationRecordAsJson(record));
+        })
+        .catch(next);
+    },
+  );
+
+  /** Moves some or all of somebody's reports to another manager. */
+  routes.post(
+    '/directory/admin/people/:employeeId/reports',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void administration
+        .reassignReports(actorOf(response), request.params.employeeId, request.body)
+        .then(({ moved, to }) => {
+          response.json({ moved: moved.map(namedAsJson), to: namedAsJson(to) });
+        })
+        .catch(next);
+    },
+  );
+}
+
+function namedAsJson(person: PersonNamed): unknown {
+  return {
+    employeeId: person.employeeId,
+    firstName: person.firstName,
+    lastName: person.lastName,
+    jobTitle: person.jobTitle,
+  };
+}
+
+/** One row of HR's list. Ten-character dates throughout. NFR DAT 03. */
+function staffRecordAsJson(record: StaffRecord): unknown {
+  const { employee } = record;
+
+  return {
+    employeeId: employee.id,
+    employeeNumber: employee.employeeNumber,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    workEmail: employee.workEmail,
+    jobTitle: employee.jobTitle,
+    department: { id: employee.departmentId, name: record.departmentName },
+    manager: record.manager === null ? null : namedAsJson(record.manager),
+    workPatternId: employee.workPatternId,
+    startDate: employee.startDate,
+    exitDate: employee.exitDate,
+    employmentType: employee.employmentType,
+    employmentStatus: employee.employmentStatus,
+    gender: employee.gender,
+    standing: record.standing,
+    login: record.login,
+    reports: record.reports,
+  };
+}
+
+function administrationListAsJson(list: AdministrationList): unknown {
+  return {
+    today: list.today,
+    records: list.records.map(staffRecordAsJson),
+    departments: list.departments.map(departmentAsJson),
+    loginsToCreate: list.loginsToCreate.map(loginToCreateAsJson),
+    systemAdministrators: list.systemAdministrators.map(namedAsJson),
+  };
+}
+
+function administrationRecordAsJson(record: AdministrationRecord): unknown {
+  return {
+    ...(staffRecordAsJson(record) as object),
+    today: record.today,
+    workPatternName: record.workPatternName,
+    reportsStillHere: record.reportsStillHere.map(namedAsJson),
+    history: record.history.map(changeAsJson),
+  };
+}
+
+function changeAsJson(change: RecordChange): unknown {
+  return {
+    at: change.at.toISOString(),
+    action: change.action,
+    by: change.by,
+    changes: change.changes.map((one) => ({
+      field: one.field,
+      label: one.label,
+      from: one.from,
+      to: one.to,
+    })),
+  };
+}
+
+function loginToCreateAsJson(waiting: LoginToCreate): unknown {
+  return {
+    person: namedAsJson(waiting.person),
+    workEmail: waiting.workEmail,
+    startDate: waiting.startDate,
+    soon: waiting.soon,
+  };
+}
+
+function choicesAsJson(choices: AdministrationChoices): unknown {
+  return {
+    today: choices.today,
+    departments: choices.departments.map(departmentAsJson),
+    managers: choices.managers.map(namedAsJson),
+    patterns: choices.patterns.map((one) => ({
+      id: one.id,
+      name: one.name,
+      isDefault: one.isDefault,
+    })),
+    employmentTypes: choices.employmentTypes,
+    employmentStatuses: choices.employmentStatuses,
+    genders: choices.genders,
+  };
 }
 
 function emailRoutes(routes: Router, emails: DirectoryEmailService): void {
@@ -315,11 +513,16 @@ function briefAsJson(person: PersonInBrief): unknown {
  * Written out rather than sent whole, so that a field added to the domain reaches every
  * employee only when somebody edits this file.
  */
-function directoryAsJson(directory: Directory): unknown {
+function directoryAsJson(directory: DirectoryForReader): unknown {
   return {
     today: directory.today,
     people: directory.people.map(entryAsJson),
     departments: directory.departments.map(departmentAsJson),
+    /** Which parts of the Administration tab to draw. The routes behind it ask again. */
+    may: {
+      administer: directory.may.administer,
+      seeLoginsToCreate: directory.may.seeLoginsToCreate,
+    },
   };
 }
 

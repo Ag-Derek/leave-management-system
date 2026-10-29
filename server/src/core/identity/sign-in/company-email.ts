@@ -1,6 +1,9 @@
 /** Company email addresses. NFR SEC 01. */
 
 export class NotACompanyEmail extends Error {
+  /** The box a form puts the message beside, wherever an address is typed. */
+  readonly field = 'workEmail';
+
   constructor(email: string) {
     super(`${email} is not a company address. Sign in is by company email only.`);
     this.name = 'NotACompanyEmail';
