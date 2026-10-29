@@ -30,11 +30,12 @@ export function resendSends(apiKey: string): (mail: Mail) => Promise<SentMail> {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        from: fromAddress(),
+        from: fromAddress(mail.fromName),
         to: [deliveredTo],
         subject: mail.subject,
         text: mail.text,
         ...(mail.html === undefined ? {} : { html: mail.html }),
+        ...(mail.replyTo === undefined ? {} : { reply_to: mail.replyTo }),
         /* The intended recipient is kept rather than thrown away, as the SMTP transport keeps
            it, so a mailbox full of redirected mail can still say who each was for. */
         ...(override === undefined ? {} : { headers: { 'X-Intended-Recipient': mail.to } }),

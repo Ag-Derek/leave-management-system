@@ -40,6 +40,12 @@ export const ADMINISTERS_ACCESS: readonly RoleCode[] = ['HR_ADMIN', 'SYS_ADMIN']
 /** The roles that search the whole audit log. NFR AUD 01. */
 export const SEARCHES_THE_AUDIT_LOG: readonly RoleCode[] = ['HR_ADMIN', 'SYS_ADMIN'];
 
+/** The roles that read the log of every email sent. */
+export const READS_THE_EMAIL_LOG: readonly RoleCode[] = ['HR_ADMIN', 'SYS_ADMIN'];
+
+/** The role that sends what is queued: the job, which runs as the system. */
+export const SENDS_QUEUED_EMAIL: readonly RoleCode[] = ['SYS_ADMIN'];
+
 /** What somebody is, for the purposes of deciding what they may do. */
 export interface Authority {
   roles: RoleCode[];

@@ -490,6 +490,23 @@ export interface LeaveThatFollows {
   cancelWhatIsPending(actor: Actor, exit: Exit): Promise<unknown>;
 }
 
+/** A record as it was and as it is, just after the change was written. */
+export interface EmployeeChange {
+  before: Employee;
+  after: Employee;
+}
+
+/**
+ * Told after any change to a record has been written: the directory's emails, which tell
+ * somebody their job title, department or manager has changed.
+ *
+ * Declared here and filled by an app, as {@link LeaveThatFollows} is. A first step towards the
+ * EmployeeChangeSubscriber of compromise 3 in .dependency-cruiser.cjs.
+ */
+export interface EmployeeChangeSubscriber {
+  onEmployeeChanged(actor: Actor, change: EmployeeChange): Promise<unknown>;
+}
+
 /** For a caller with no leave to carry: a seed, a test about departments. */
 export function noLeaveFollows(): LeaveThatFollows {
   return {

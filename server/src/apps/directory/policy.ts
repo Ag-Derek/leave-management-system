@@ -136,4 +136,68 @@ export const directoryPolicy = {
           LOGINS_ARE_ADMINISTRATIVE,
         );
   },
+
+  /**
+   * Reading and choosing which optional emails come to you, which is everybody's and only for
+   * themselves: the routes name no person, so there is nobody else's to ask for.
+   */
+  chooseEmails(actor: Actor): Decision {
+    return actor.employeeId !== null
+      ? about.allow(actor, 'chooseEmails')
+      : about.refuse(actor, 'chooseEmails', null, 'has no employee record behind it');
+  },
+
+  /**
+   * Sending the emails a day brings: welcomes on a start date, warnings as an exit date nears.
+   * The scheduled job's, which runs as the system and holds every role.
+   */
+  sendDailyEmails(actor: Actor): Decision {
+    return holdsAny(actor, 'SYS_ADMIN')
+      ? about.allow(actor, 'sendDailyEmails')
+      : about.refuse(actor, 'sendDailyEmails', null, 'holds no role that sends scheduled email');
+  },
+
+  /**
+   * Writing to a colleague from their profile: anybody to anybody current, as the profile
+   * itself is, and never to yourself.
+   *
+   * Somebody who is not listed is refused silently, so the form cannot be used to learn who
+   * has left, exactly as their profile cannot. Writing to yourself is refused openly.
+   */
+  sendMessage(actor: Actor, recipientId: string, listed: boolean): Decision {
+    if (actor.employeeId === null) {
+      return about.refuse(actor, 'sendMessage', recipientId, 'has no employee record behind it');
+    }
+    if (isSelf(actor, recipientId)) {
+      return about.refuseOpenly(
+        actor,
+        'sendMessage',
+        recipientId,
+        'writing to themselves',
+        'You cannot send a message to yourself.',
+      );
+    }
+
+    return listed
+      ? about.allow(actor, 'sendMessage', recipientId)
+      : about.refuse(actor, 'sendMessage', recipientId, 'not in the directory today');
+  },
+
+  /**
+   * Telling somebody they have been named as cover: by the person going on leave, their
+   * manager, or HR, the three who may name cover at all.
+   */
+  tellCover(actor: Actor, absentee: { id: string; managerId: string | null }): Decision {
+    return isSelf(actor, absentee.id) ||
+      isSelf(actor, absentee.managerId) ||
+      holdsAny(actor, ...MAINTAINS_EMPLOYEE_RECORDS)
+      ? about.allow(actor, 'tellCover', absentee.id)
+      : about.refuseOpenly(
+          actor,
+          'tellCover',
+          absentee.id,
+          'not the person, their manager or HR',
+          'Only the person on leave, their manager or HR can name their cover.',
+        );
+  },
 };

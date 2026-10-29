@@ -2097,6 +2097,43 @@ export async function changeMyProfile(
   );
 }
 
+/** One email the directory can send me, and whether it comes to me. */
+export interface EmailChoice {
+  email: string;
+  label: string;
+  description: string;
+  /** False for the ones that are always sent, which have no switch. */
+  optional: boolean;
+  receives: boolean;
+}
+
+/** The emails I can be sent, and which come to me. */
+export async function myEmailChoices(): Promise<EmailChoice[]> {
+  return (await request<{ emails: EmailChoice[] }>('GET', '/api/me/email-preferences')).emails;
+}
+
+/** Turns one of my optional emails on or off. Answered with the whole list as it now stands. */
+export async function chooseEmail(email: string, receives: boolean): Promise<EmailChoice[]> {
+  return (
+    await request<{ emails: EmailChoice[] }>(
+      'PUT',
+      `/api/me/email-preferences/${encodeURIComponent(email)}`,
+      { receives },
+    )
+  ).emails;
+}
+
+/**
+ * Writes to a colleague from their profile. Queued rather than sent, so it answers at once; the
+ * writer gets a copy by email.
+ */
+export async function sendMessage(
+  employeeId: string,
+  message: { subject: string; message: string },
+): Promise<void> {
+  await request<unknown>('POST', `/api/people/${encodeURIComponent(employeeId)}/messages`, message);
+}
+
 /** What a photo may be. Shown and checked on the form; the server reads the bytes itself. */
 export const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const MAX_PHOTO_BYTES = 8 * 1024 * 1024;

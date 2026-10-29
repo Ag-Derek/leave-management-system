@@ -75,6 +75,9 @@ import { AwayTodayService } from './apps/leave/team/away-today.service.js';
 import { DirectoryService } from './apps/directory/directory.service.js';
 import { directoryRoutes } from './apps/directory/routes.js';
 import type { PhotoRepository } from './apps/directory/photo.db.js';
+import type { DirectoryEmailService } from './apps/directory/email.service.js';
+import type { EmailOutbox } from './core/notification/outbox.service.js';
+import { emailLogRoutes } from './core/notification/routes.js';
 import { PhotoService } from './apps/directory/photo.service.js';
 import { AdministrationService } from './apps/directory/administration.service.js';
 import type { EmployeeService } from './core/organisation/employee/employee.service.js';
@@ -178,6 +181,16 @@ export interface Application {
   emailWording: EmailWordingRepository;
   /** NFR AUD 01. */
   audit: AuditRepository;
+  /**
+   * The email queue, for the log of what was sent. Optional, so a test app without it has no
+   * email log route. Built in main.ts, where the job that drains it is.
+   */
+  outbox?: EmailOutbox;
+  /**
+   * The directory's emails, for the screen where people choose theirs. A service rather than
+   * repositories for the reason `leaveRequests` is: it queues mail.
+   */
+  directoryEmails?: DirectoryEmailService;
   /** Where a 500 is written down. */
   failures?: FailureLog;
   /** Read from `SESSION_SECRET` when not given. */
@@ -464,6 +477,7 @@ export function buildApp(parts: Application): Express {
           parts.photos === undefined
             ? undefined
             : new PhotoService(parts.guard, parts.photos, parts.employees, parts.storage),
+        emails: parts.directoryEmails,
         /* HR's Administration tab. Every route asks `directoryPolicy.administer` itself. */
         administration:
           parts.employeeRecords === undefined || parts.patterns === undefined
@@ -480,6 +494,12 @@ export function buildApp(parts: Application): Express {
               ),
       }),
     );
+  }
+
+  /* Who was sent which email and what became of it. An HR Administrator's and a System
+     Administrator's, which `outboxPolicy` decides rather than the mounting. */
+  if (parts.outbox !== undefined) {
+    app.use('/api', emailLogRoutes({ outbox: parts.outbox }));
   }
 
   if (parts.planning !== undefined) {
