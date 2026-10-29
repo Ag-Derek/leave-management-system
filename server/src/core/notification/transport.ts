@@ -6,6 +6,13 @@ export interface Mail {
   subject: string;
   text: string;
   html?: string;
+  /**
+   * The name shown as the sender, as "Ama Mensah via Remat Portal", where a person caused the
+   * message. The address is always `MAIL_FROM_ADDRESS`: nothing is sent as a colleague's mailbox.
+   */
+  fromName?: string;
+  /** Where a reply goes, which is that person's own address. */
+  replyTo?: string;
 }
 
 export interface SentMail {
@@ -36,10 +43,18 @@ export function createTransport(): Transporter {
   });
 }
 
-export function fromAddress(): string {
-  const name = process.env.MAIL_FROM_NAME;
+export function fromAddress(fromName?: string): string {
+  const name = displayName(fromName ?? process.env.MAIL_FROM_NAME ?? '');
   const address = required('MAIL_FROM_ADDRESS');
   return name ? `"${name}" <${address}>` : address;
+}
+
+/** A sender's name made safe to quote in a header: one line, no quotes or brackets. */
+function displayName(name: string): string {
+  return name
+    .replace(/[\r\n"\\<>]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
@@ -55,8 +70,9 @@ export async function sendMail(transport: Transporter, mail: Mail): Promise<Sent
   const deliveredTo = override || mail.to;
 
   const info = await transport.sendMail({
-    from: fromAddress(),
+    from: fromAddress(mail.fromName),
     to: deliveredTo,
+    replyTo: mail.replyTo,
     subject: mail.subject,
     text: mail.text,
     html: mail.html,

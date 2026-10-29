@@ -11,6 +11,8 @@ import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import type { BackTo } from './DirectoryPage';
 import { Avatar, chartAddress, profileAddress, Today } from './person';
+import { CopyButton } from './CopyButton';
+import { SendMessage } from './SendMessage';
 
 const NOT_FOUND = 404;
 
@@ -112,13 +114,21 @@ export function ColleagueProfilePage({
           </div>
         ) : null
       ) : (
-        <Profile colleague={shown} today={today} />
+        <Profile colleague={shown} today={today} onSignedOut={onSignedOut} />
       )}
     </>
   );
 }
 
-function Profile({ colleague, today }: { colleague: DirectoryProfile; today: string }) {
+function Profile({
+  colleague,
+  today,
+  onSignedOut,
+}: {
+  colleague: DirectoryProfile;
+  today: string;
+  onSignedOut: () => void;
+}) {
   const { firstName, lastName, notListed } = colleague;
 
   return (
@@ -155,11 +165,22 @@ function Profile({ colleague, today }: { colleague: DirectoryProfile; today: str
         <section aria-labelledby="their-contact">
           <h3 id="their-contact">Contact</h3>
 
+          {/* The address as text with two icons, not a mailto link: that asks Windows which
+              app to open, and a machine with none set up answers with a chooser. Copy it for
+              your own mail app, or write from here. */}
           <div className="my-profile-fact">
             <span>Work email</span>
-            <p>
-              <a href={`mailto:${colleague.workEmail}`}>{colleague.workEmail}</a>
-            </p>
+            {/* A div, since the message form's dialog opens inside it and a paragraph may not
+                hold one. */}
+            <div className="work-email">
+              <span className="work-email-address">{colleague.workEmail}</span>
+              <CopyButton
+                text={colleague.workEmail}
+                label={`Copy ${firstName} ${lastName}'s email address`}
+              />
+              {/* Only somebody current can be written to. */}
+              {notListed === null ? <SendMessage to={colleague} onSignedOut={onSignedOut} /> : null}
+            </div>
           </div>
 
           {colleague.workMobile === null ? null : (
