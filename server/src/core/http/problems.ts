@@ -237,6 +237,12 @@ const REFUSED_BY_A_RULE: Readonly<Record<string, number>> = {
   PhotoTooLarge: 413,
   /** A larger photo, or zooming out, is the fix. */
   PhotoTooSmall: 400,
+  /** 409: the choice is well formed, and the email is one that is always sent. */
+  EmailIsMandatory: 409,
+  /** 429: waiting is the fix, and the message says how long the limit is. */
+  TooManyMessages: 429,
+  /** 503: nothing was sent and trying again is the fix. */
+  MessageNotQueued: 503,
   /**
    * FR 13, FR 32a. The upload is the fix, and the message names why one is wanted.
    *

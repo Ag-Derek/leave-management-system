@@ -961,6 +961,103 @@ a.portal-app:hover {
   margin: 0;
 }
 
+/* A colleague's address, with a copy icon and a message icon on the end of it. */
+.my-profile-fact > .work-email {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.15rem;
+}
+
+.work-email-address {
+  margin-right: 0.35rem;
+  overflow-wrap: anywhere;
+}
+
+/* "Copied", "Sent": a word beside the icon for a moment, empty the rest of the time. */
+.icon-said {
+  font-size: 0.75rem;
+  color: var(--go-ink);
+}
+
+.icon-said:empty {
+  display: none;
+}
+
+/* The emails I get: a card under the three, the same look, its own title band. */
+.my-profile-emails {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding: 0 var(--gap-lg) var(--gap-lg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.my-profile-emails h3 {
+  margin: 0 calc(var(--gap-lg) * -1);
+  padding: 0.85rem var(--gap-lg);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: color-mix(in srgb, var(--ink) 2%, var(--card));
+  font-family: var(--face-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.my-profile-emails > .muted,
+.my-profile-emails .notice {
+  margin: 0;
+}
+
+.email-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.9rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.email-choices li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.email-choices .tick {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* The box beside the label's first line, not the middle of two. */
+.email-choices .tick input {
+  margin-top: 0.15rem;
+}
+
+.email-choices .tick span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.email-choices small {
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.email-choice-saved {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--go-ink);
+}
+
 .my-profile-manager {
   display: flex;
   align-items: center;

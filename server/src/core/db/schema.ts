@@ -628,6 +628,38 @@ export interface NotificationTemplateTable {
   updated_at: Timestamp;
 }
 
+/** One email, queued, sent or given up on. The queue and the log at once. */
+export interface EmailOutboxTable {
+  id: Generated<string>;
+  kind: ColumnType<string, string, never>;
+  recipient_employee_id: ColumnType<string | null, string | null, never>;
+  to_address: ColumnType<string, string, never>;
+  /** "Ama Mensah via Remat Portal", where a person caused it. */
+  from_name: ColumnType<string | null, string | null, never>;
+  reply_to: ColumnType<string | null, string | null, never>;
+  /** Who caused it, where a person did. */
+  sender_employee_id: ColumnType<string | null, string | null, never>;
+  subject: ColumnType<string, string, never>;
+  text_body: ColumnType<string, string, never>;
+  html_body: ColumnType<string, string, never>;
+  dedupe_key: ColumnType<string | null, string | null, never>;
+  status: ColumnType<string, never, string>;
+  attempts: ColumnType<number, never, number>;
+  next_attempt_at: ColumnType<Date | null, never, Date | null>;
+  last_error: ColumnType<string | null, never, string | null>;
+  delivered_to: ColumnType<string | null, never, string | null>;
+  sent_at: ColumnType<Date | null, never, Date | null>;
+  gave_up_at: ColumnType<Date | null, never, Date | null>;
+  queued_at: ColumnType<Date, never, never>;
+}
+
+/** An optional email somebody has turned off. No row is on. */
+export interface EmailOptOutTable {
+  employee_id: string;
+  email: string;
+  opted_out_at: ColumnType<Date, never, never>;
+}
+
 export interface Database {
   app_user: AppUserTable;
   /** FR 49. */
@@ -638,6 +670,8 @@ export interface Database {
   audit_log: AuditLogTable;
   balances_that_disagree_with_the_ledger: BalanceDisagreementView;
   department: DepartmentTable;
+  email_opt_out: EmailOptOutTable;
+  email_outbox: EmailOutboxTable;
   employee: EmployeeTable;
   holiday: HolidayTable;
   leave_balance: LeaveBalanceTable;

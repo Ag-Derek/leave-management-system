@@ -4,6 +4,7 @@ import { monthAndYear } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import type { BackTo } from './DirectoryPage';
+import { EmailPreferences } from './EmailPreferences';
 import { Avatar, chartAddress, Today } from './person';
 import { PhotoEditor } from './PhotoEditor';
 import { DESCRIPTION_LIMIT, descriptionProblem, lengthOf, workMobileProblem } from './rules';
@@ -77,15 +78,19 @@ export function MyProfilePage({
           </div>
         ) : null
       ) : (
-        <Editor
-          saved={saved}
-          today={today}
-          onSaved={(mine) => {
-            setSaved(mine);
-            onSaved(mine);
-          }}
-          onSignedOut={onSignedOut}
-        />
+        <>
+          <Editor
+            saved={saved}
+            today={today}
+            onSaved={(mine) => {
+              setSaved(mine);
+              onSaved(mine);
+            }}
+            onSignedOut={onSignedOut}
+          />
+          {/* Outside the form: each choice saves on its own, and Save is for the fields above. */}
+          <EmailPreferences onSignedOut={onSignedOut} />
+        </>
       )}
     </>
   );

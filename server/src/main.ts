@@ -71,6 +71,13 @@ import {
 import { UndeliveredNotices } from './apps/leave/notification/delivery.job.js';
 import { summaryOf as summaryOfDelivery } from './apps/leave/notification/delivery.js';
 import { EmployeeService } from './core/organisation/employee/employee.service.js';
+import { EmailOutboxRepository } from './core/notification/outbox.db.js';
+import { EmailOutbox } from './core/notification/outbox.service.js';
+import { summaryOf as summaryOfOutbox } from './core/notification/outbox.js';
+import { EmailPreferenceRepository } from './apps/directory/email.db.js';
+import { DirectoryEmailService } from './apps/directory/email.service.js';
+import { portalLinks } from './apps/directory/email.js';
+import { DailyDirectoryEmails, summaryOfDailyEmails } from './apps/directory/email.job.js';
 import {
   LeaverReports,
   summaryOfLeaverReports,
@@ -90,6 +97,26 @@ function portFrom(env: NodeJS.ProcessEnv): number {
   }
 
   return port;
+}
+
+/**
+ * The address email links point at. Development's default is Vite's; production must say,
+ * because a link to localhost in somebody's inbox opens nothing. See .env.example.
+ */
+function appUrlFrom(env: NodeJS.ProcessEnv): string {
+  const url = env.APP_URL?.trim();
+
+  if (url) {
+    return url;
+  }
+
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'APP_URL is not set. Email links need the address people open the portal at. See .env.example.',
+    );
+  }
+
+  return 'http://localhost:5173';
 }
 
 const db = createDatabase();
@@ -138,6 +165,23 @@ const delegations = new ApprovalDelegationService(
 const patterns = new WorkPatternRepository(db);
 
 const mailer = createMailer();
+
+/**
+ * The email queue. Built once, as the mailer is: every message is a row here, sent by the
+ * job below, so nothing that decides an email waits on the mail server. Each one queued
+ * nudges that job, so it goes within seconds rather than at the next minute.
+ */
+const outbox = new EmailOutbox(new EmailOutboxRepository(db), mailer, guard, undefined, () => {
+  setImmediate(() => {
+    void drainOutbox();
+  });
+});
+
+/**
+ * The directory is still being built and is not mounted in production (see app.ts), so its
+ * emails, which link to it, are not sent there either until it is.
+ */
+const DIRECTORY_IS_OPEN = process.env.NODE_ENV !== 'production';
 
 /**
  * The one place a balance moves. §5.7, FR 37.
@@ -230,6 +274,35 @@ const events = new LeaveEventRepository(db);
 /** NFR SEC 04. Shared by the attachment routes and the certificate purge. */
 const storage = createStorage();
 
+/** The directory's emails: welcomes, introductions, leaver warnings, record changes, cover. */
+const directoryEmails = new DirectoryEmailService(
+  guard,
+  employees,
+  departments,
+  roles,
+  new EmailPreferenceRepository(db),
+  outbox,
+  /* Asked only where the emails are sent, so a production without APP_URL still starts while
+     the directory is closed there. */
+  portalLinks(DIRECTORY_IS_OPEN ? appUrlFrom(process.env) : (process.env.APP_URL ?? '')),
+);
+
+/**
+ * The door every change to a record goes through. Built once, so every caller — today the
+ * leavers' reports job, and HR's screens when they come — tells the directory's emails.
+ * The leave service is what a moved report's pending requests follow. FR 07.
+ */
+const employeeRecords = new EmployeeService(
+  employees,
+  departments,
+  patterns,
+  guard,
+  leaveRequests,
+  {
+    subscribers: DIRECTORY_IS_OPEN ? [directoryEmails] : [],
+  },
+);
+
 const app = buildApp({
   guard,
   signIn: new SignInService(accounts, employees, roles, mailer, guard),
@@ -277,6 +350,9 @@ const app = buildApp({
   emailWording: new EmailWordingRepository(db),
   /** NFR AUD 01. */
   audit: new AuditRepository(db),
+  /** The log of every email sent. */
+  outbox,
+  directoryEmails,
   /* Resolved here as well as inside buildApp, so that a missing secret stops the process
      before a socket is opened rather than while the first request is being served. */
   secret: sessionSecretFrom(),
@@ -334,10 +410,8 @@ const reconciliation = new BalanceReconciliation(
 );
 const reminders = new DailyApproverReminders(leaveRequests, notifications);
 const undelivered = new UndeliveredNotices(notifications);
-/* The leave service is what a moved report's pending requests follow. FR 07. */
-const leaverReports = new LeaverReports(
-  new EmployeeService(employees, departments, patterns, guard, leaveRequests),
-);
+const leaverReports = new LeaverReports(employeeRecords);
+const dailyDirectoryEmails = new DailyDirectoryEmails(directoryEmails);
 
 /** Runs one job and logs its summary, or its failure. Undefined means nothing worth logging. */
 async function runJob(job: string, work: () => Promise<string | undefined>): Promise<void> {
@@ -458,6 +532,50 @@ const deliveryTimer = every(MINUTE_MS, () =>
   }),
 );
 
+/* Welcomes on a start date and warnings as an exit date nears. Hourly so a restart cannot
+   skip a day, and not before the working day starts; nobody is sent the same one twice. */
+const directoryEmailTimer = every(HOUR_MS, () =>
+  runJob('directory-emails', async () => {
+    if (!DIRECTORY_IS_OPEN || new Date().getUTCHours() < REMIND_FROM_HOUR_UTC) {
+      return undefined;
+    }
+
+    return summaryOfDailyEmails(
+      await dailyDirectoryEmails.run(theSystem('the directory daily emails')),
+    );
+  }),
+);
+
+/** Whether the outbox is being drained, and whether something was queued while it was. */
+let draining = false;
+let drainAgain = false;
+
+/**
+ * Sends what the outbox has due. Every minute for the retries, and straight after anything is
+ * queued. One drain at a time; something queued during one is picked up by a second pass.
+ */
+async function drainOutbox(): Promise<void> {
+  if (draining) {
+    drainAgain = true;
+    return;
+  }
+
+  draining = true;
+
+  try {
+    do {
+      drainAgain = false;
+      await runJob('email-outbox', async () =>
+        summaryOfOutbox(await outbox.drain(theSystem('the email outbox'))),
+      );
+    } while (drainAgain);
+  } finally {
+    draining = false;
+  }
+}
+
+const outboxTimer = every(MINUTE_MS, drainOutbox);
+
 /**
  * Stop taking new connections, finish the ones in flight, then close the pool.
  *
@@ -474,6 +592,8 @@ function shutDown(signal: string): void {
   clearInterval(reminderTimer);
   clearInterval(leaverTimer);
   clearInterval(deliveryTimer);
+  clearInterval(directoryEmailTimer);
+  clearInterval(outboxTimer);
 
   server.close(() => {
     void db.destroy().then(() => {

@@ -53,6 +53,11 @@ import { EmployeeService } from '../../src/core/organisation/employee/employee.s
 import { LeaverReports } from '../../src/core/organisation/employee/leaver-reports.job.js';
 import type { Directory } from '../../src/apps/directory/directory.js';
 import { recordingMailer } from '../support/recording-mailer.js';
+import { EmailOutboxRepository } from '../../src/core/notification/outbox.db.js';
+import { EmailOutbox } from '../../src/core/notification/outbox.service.js';
+import { EmailPreferenceRepository } from '../../src/apps/directory/email.db.js';
+import { DirectoryEmailService } from '../../src/apps/directory/email.service.js';
+import { portalLinks } from '../../src/apps/directory/email.js';
 import { recordingDenials } from '../support/recording-denials.js';
 import { seed } from '../../seeds/seed.mjs';
 import { holidayRecalculationService } from '../support/holiday-recalculations.js';
@@ -133,7 +138,19 @@ beforeAll(async () => {
     new NotificationService(new NotificationRepository(db), recordingMailer(), guard),
   );
 
+  const outbox = new EmailOutbox(new EmailOutboxRepository(db), recordingMailer(), guard);
+
   const app = buildApp({
+    outbox,
+    directoryEmails: new DirectoryEmailService(
+      guard,
+      employees,
+      new DepartmentRepository(db),
+      roles,
+      new EmailPreferenceRepository(db),
+      outbox,
+      portalLinks('http://portal.test'),
+    ),
     guard,
     signIn: new SignInService(accounts, employees, roles, recordingMailer(), guard, {
       domains: ['rematholdings.com'],
@@ -1097,6 +1114,153 @@ interface JsonProfile extends JsonEntry {
  * A JPEG straight off a phone, as far as the server can tell: 1200 by 900 with an EXIF block,
  * and a GPS position and a place name in it where asked for.
  */
+describe('choosing which emails come to me', () => {
+  interface JsonChoice {
+    email: string;
+    optional: boolean;
+    receives: boolean;
+  }
+
+  const choose = (as: string, email: string, body: unknown) =>
+    fetch(`${origin}/api/me/email-preferences/${email}`, {
+      method: 'PUT',
+      headers: {
+        cookie: `${SESSION_COOKIE}=${mintSession(as, SECRET)}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+  it('needs a session like everything else behind the line', async () => {
+    expect((await fetch(`${origin}/api/me/email-preferences`)).status).toBe(401);
+  });
+
+  it('lists my emails, every optional one on until I turn it off', async () => {
+    const response = await get('/api/me/email-preferences', people.officer);
+    const { emails } = (await response.json()) as { emails: JsonChoice[] };
+
+    expect(response.status).toBe(200);
+    expect(emails.find((one) => one.email === 'NEW_COLLEAGUE')).toMatchObject({
+      optional: true,
+      receives: true,
+    });
+  });
+
+  it('turns an optional one off, and says so in the answer', async () => {
+    const response = await choose(people.officer, 'NEW_COLLEAGUE', { receives: false });
+    const { emails } = (await response.json()) as { emails: JsonChoice[] };
+
+    expect(response.status).toBe(200);
+    expect(emails.find((one) => one.email === 'NEW_COLLEAGUE')?.receives).toBe(false);
+  });
+
+  it('refuses to turn off one that is always sent, with a 409 that says why', async () => {
+    const response = await choose(people.officer, 'RECORD_CHANGED', { receives: false });
+    const body = (await response.json()) as { error: string; message: string; field: string };
+
+    expect(response.status).toBe(409);
+    expect(body).toMatchObject({ error: 'EmailIsMandatory', field: 'receives' });
+    expect(body.message).toContain('always sent');
+  });
+
+  it('answers an email that is not one with a 404, and a choice that is not one with a 400', async () => {
+    expect((await choose(people.officer, 'EVERYTHING', { receives: false })).status).toBe(404);
+    expect((await choose(people.officer, 'NEW_COLLEAGUE', { receives: 'no' })).status).toBe(400);
+  });
+});
+
+describe('writing to a colleague from their profile', () => {
+  const write = (as: string, to: string, body: unknown) =>
+    fetch(`${origin}/api/people/${to}/messages`, {
+      method: 'POST',
+      headers: {
+        cookie: `${SESSION_COOKIE}=${mintSession(as, SECRET)}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+  const hello = { subject: 'Rota training', message: 'Can you come on Friday?' };
+
+  it('queues the message in my name and a copy to me, and answers at once', async () => {
+    const response = await write(people.officer, people.teamLead, hello);
+
+    expect(response.status).toBe(202);
+
+    const { rows } = await admin.query(
+      `SELECT recipient_employee_id, sender_employee_id, from_name, reply_to, subject
+         FROM email_outbox WHERE kind = 'DIRECT_MESSAGE' ORDER BY id`,
+    );
+
+    expect(rows).toEqual([
+      {
+        recipient_employee_id: people.teamLead,
+        sender_employee_id: people.officer,
+        from_name: 'Adwoa Frimpong via Remat Portal',
+        reply_to: 'adwoa.frimpong@rematholdings.com',
+        subject: 'Rota training',
+      },
+      {
+        recipient_employee_id: people.officer,
+        sender_employee_id: people.officer,
+        from_name: 'Remat Portal',
+        reply_to: 'kofi.boateng@rematholdings.com',
+        subject: 'Copy: Rota training',
+      },
+    ]);
+  });
+
+  it('needs a session like everything else behind the line', async () => {
+    const response = await fetch(`${origin}/api/people/${people.teamLead}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(hello),
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it('refuses a message to myself, openly', async () => {
+    expect((await write(people.officer, people.officer, hello)).status).toBe(403);
+  });
+
+  it('answers somebody who has left as nobody, so it cannot be used to learn who has', async () => {
+    expect((await write(people.officer, people.leaver, hello)).status).toBe(404);
+    expect((await write(people.officer, '999999', hello)).status).toBe(404);
+  });
+
+  it('names the box that is missing', async () => {
+    const response = await write(people.officer, people.teamLead, { subject: '', message: 'Hi' });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: 'InvalidMessage', field: 'subject' });
+  });
+
+  it('allows ten an hour, and says so on the eleventh', async () => {
+    for (let sent = 0; sent < 10; sent += 1) {
+      expect((await write(people.officer, people.teamLead, hello)).status).toBe(202);
+    }
+
+    const eleventh = await write(people.officer, people.teamLead, hello);
+
+    expect(eleventh.status).toBe(429);
+    expect(((await eleventh.json()) as { message: string }).message).toContain('10 messages');
+  });
+});
+
+describe('the email log', () => {
+  it('is an HR Administrator’s to read', async () => {
+    const response = await get('/api/email-log', people.headOfHr);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ emails: [] });
+  });
+
+  it('is refused to an employee, openly', async () => {
+    expect((await get('/api/email-log', people.officer)).status).toBe(403);
+  });
+});
+
 async function aPhoto(options: { withLocation?: boolean; colour?: string } = {}): Promise<Buffer> {
   const image = sharp({
     create: { width: 1200, height: 900, channels: 3, background: options.colour ?? '#c08040' },

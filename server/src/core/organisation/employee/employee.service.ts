@@ -9,6 +9,8 @@ import type { Decision, Guard } from '../../auth/policy.js';
 import { assertCanTakeEmployees, DepartmentNotFound } from '../department/department.js';
 import {
   assertNoManagerCycle,
+  type EmployeeChange,
+  type EmployeeChangeSubscriber,
   EmployeeNotFound,
   type LeaveThatFollows,
   ManagerHasLeft,
@@ -37,10 +39,13 @@ import type { WorkPatternRepository } from '../../calendar/work-pattern/work-pat
 export interface EmployeeServiceOptions {
   /** The company domains a work address may belong to. */
   domains?: string[];
+  /** Told after each change is written. Their failures never fail the change. */
+  subscribers?: readonly EmployeeChangeSubscriber[];
 }
 
 export class EmployeeService {
   private readonly domains: string[];
+  private readonly subscribers: readonly EmployeeChangeSubscriber[];
 
   constructor(
     private readonly employees: EmployeeRepository,
@@ -64,6 +69,7 @@ export class EmployeeService {
     // so a misconfigured environment stops the application starting rather than
     // failing at whichever request first happens to need it.
     this.domains = options.domains ?? allowedDomains();
+    this.subscribers = options.subscribers ?? [];
   }
 
   /** Creates a record. NFR SEC 01, FR 02, FR 04, FR 23. */
@@ -165,7 +171,31 @@ export class EmployeeService {
       });
     }
 
+    await this.tellSubscribers(actor, { before: current, after: updated });
+
     return updated;
+  }
+
+  /**
+   * Tells whoever listens that a record changed. Last, after everything the change itself
+   * moves, and never thrown out of: the record is already saved, and an email that could not
+   * be queued is not a reason to tell HR their correction failed.
+   */
+  private async tellSubscribers(actor: Actor, change: EmployeeChange): Promise<void> {
+    for (const subscriber of this.subscribers) {
+      try {
+        await subscriber.onEmployeeChanged(actor, change);
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            event: 'employee.subscriber.failed',
+            at: new Date().toISOString(),
+            employeeId: change.after.id,
+            because: error instanceof Error ? error.message : String(error),
+          }),
+        );
+      }
+    }
   }
 
   /** The rules about a department that need the department itself to answer. */

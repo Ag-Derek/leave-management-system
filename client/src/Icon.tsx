@@ -49,7 +49,9 @@ export type IconName =
   /* Back to where a screen was opened from. */
   | 'back'
   /* Putting up a photo. */
-  | 'camera';
+  | 'camera'
+  /* Copying something to the clipboard. */
+  | 'copy';
 
 const PATHS: Record<IconName, string> = {
   /** What you have: a calendar with days counted on it. */
@@ -112,6 +114,8 @@ const PATHS: Record<IconName, string> = {
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
   /** An email: an envelope. */
   mail: 'M3 6h18v12H3zM3 7l9 6.5L21 7',
+  /** Copying: one page over another. */
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   /** A bulleted list. */
   list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
   /** Removing one: a bin with its lid. */

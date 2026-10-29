@@ -13,6 +13,8 @@ import type {
   StaffChart,
 } from './directory.js';
 import type { DirectoryService } from './directory.service.js';
+import { readDirectoryEmail, readReceives } from './email.js';
+import type { DirectoryEmailService, EmailChoice } from './email.service.js';
 import { MAX_PHOTO_BYTES, type Photo, type PhotoSize, PhotoTooLarge } from './photo.js';
 import type { PhotoService } from './photo.service.js';
 
@@ -20,6 +22,8 @@ export interface DirectoryRoutes {
   directory: DirectoryService;
   /** Optional, so a test app without photos has no photo routes and shows everybody's initials. */
   photos?: PhotoService;
+  /** Optional, so a test app without email has no email preference routes. */
+  emails?: DirectoryEmailService;
 }
 
 /**
@@ -49,7 +53,7 @@ function photoBody(request: Request, response: Response, next: NextFunction): vo
   });
 }
 
-export function directoryRoutes({ directory, photos }: DirectoryRoutes): Router {
+export function directoryRoutes({ directory, photos, emails }: DirectoryRoutes): Router {
   const routes = Router();
 
   /** Everybody at the company today. Behind identify, so a session is needed to ask. */
@@ -117,7 +121,74 @@ export function directoryRoutes({ directory, photos }: DirectoryRoutes): Router 
     photoRoutes(routes, photos);
   }
 
+  if (emails !== undefined) {
+    emailRoutes(routes, emails);
+    messageRoutes(routes, emails);
+  }
+
   return routes;
+}
+
+function emailRoutes(routes: Router, emails: DirectoryEmailService): void {
+  /** The emails I can be sent, and which come to me. `/me` names the reader. */
+  routes.get('/me/email-preferences', (_request: Request, response: Response, next) => {
+    void emails
+      .choices(actorOf(response))
+      .then((choices) => {
+        response.json({ emails: choices.map(choiceAsJson) });
+      })
+      .catch(next);
+  });
+
+  /**
+   * Turns one on or off: `{ "receives": false }`. Turning off one that is always sent is
+   * refused with a 409 that says why. Answered with the whole list, as it now stands.
+   */
+  routes.put(
+    '/me/email-preferences/:email',
+    (request: Request<{ email: string }>, response: Response, next) => {
+      void Promise.resolve()
+        .then(() =>
+          emails.choose(
+            actorOf(response),
+            readDirectoryEmail(request.params.email),
+            readReceives(request.body),
+          ),
+        )
+        .then((choices) => {
+          response.json({ emails: choices.map(choiceAsJson) });
+        })
+        .catch(next);
+    },
+  );
+}
+
+/**
+ * Writing to a colleague from their profile: `{ "subject": "...", "message": "..." }`. Answered
+ * 202, because it is queued rather than sent; the writer gets a copy in their inbox.
+ */
+function messageRoutes(routes: Router, emails: DirectoryEmailService): void {
+  routes.post(
+    '/people/:employeeId/messages',
+    (request: Request<{ employeeId: string }>, response: Response, next) => {
+      void emails
+        .sendMessage(actorOf(response), request.params.employeeId, request.body)
+        .then(() => {
+          response.status(202).json({ queued: true });
+        })
+        .catch(next);
+    },
+  );
+}
+
+function choiceAsJson(choice: EmailChoice): unknown {
+  return {
+    email: choice.email,
+    label: choice.label,
+    description: choice.description,
+    optional: choice.optional,
+    receives: choice.receives,
+  };
 }
 
 function photoRoutes(routes: Router, photos: PhotoService): void {

@@ -340,6 +340,63 @@ real recipient, and the intended recipient is preserved in an
 pointed at a copy of real staff data, so that testing notifications cannot mail
 actual colleagues. Leave it blank in production.
 
+**Outside production the API will not start unless mail stays here.** `createMailer`
+calls `checkMailStaysHere`: with `NODE_ENV` anything but `production` (unset included),
+mail must go either to an SMTP server on this machine — Mailpit — or to
+`MAIL_OVERRIDE_RECIPIENT`. A `RESEND_API_KEY` or a real `SMTP_HOST` in a development
+`.env` with no override stops the process with a sentence saying which, rather than
+mailing staff. `unit/mail-safety.test.ts` holds the cases.
+
+### The email outbox
+
+The directory's emails are queued, not sent while somebody waits. `EmailOutbox.queue`
+writes a row to `email_outbox` and returns; a job in `main.ts` drains it every minute,
+and straight after anything is queued. A save never waits on a mail server.
+
+The row is also **the log of every email**: recipient, which email, when, the
+address it actually went to, and what became of it. HR Administrators and System
+Administrators read it at `GET /api/email-log` (`?status=FAILED`, `?kind=`,
+`?employeeId=`). Nothing may rewrite what a row says or delete one; `lms_app` may only
+move its delivery columns.
+
+**A failed send is retried**: one minute, then five times longer each time, six
+attempts in all (a little over thirteen hours), the same backoff as a leave notice.
+Every failure is a `email.undelivered` line on stderr with the attempt and when the
+next is due; the sixth marks the row `FAILED`.
+
+**A job's emails carry a dedupe key**, so the hourly job that welcomes joiners and
+warns HR about leavers can run as often as it likes and send each message once.
+
+**A person's name, never their mailbox.** An email somebody caused — HR changing a
+record, a colleague naming cover — is sent as "Ama Mensah via Remat Portal" from
+`MAIL_FROM_ADDRESS`, with `Reply-To` their work address. Everything else the directory
+sends is from "Remat Portal" at the same address.
+
+| Email | To | When | Optional |
+|---|---|---|---|
+| `WELCOME` | the joiner | their start date, with a link to their profile | no |
+| `NEW_REPORT` | their manager | the joiner's start date | no |
+| `NEW_COLLEAGUE` | everybody else under that manager | the joiner's start date | yes |
+| `LEAVER_HAS_REPORTS` | everybody in HR | 14 days and 3 days before an exit date, while reports remain | no |
+| `RECORD_CHANGED` | the employee | HR changes their job title, department or manager | no |
+| `COVER_NAMED` | the cover | a colleague names them as cover (#226; not yet called) | yes |
+| `DIRECT_MESSAGE` | a colleague, and a copy to the writer | somebody uses **Send a message** on a profile; 10 an hour each | no |
+
+A profile shows the work address as text rather than a `mailto:` link, which on a machine
+with no mail app chosen opens a Windows app picker. **Send a message** is the way to write
+from the portal: `POST /api/people/:id/messages`, queued like the rest, current staff only,
+never to yourself.
+
+People turn the optional ones off on their own profile. The list of optional emails is
+`OPTIONAL_EMAILS` in `apps/directory/email.ts` and, again, the
+`email_opt_out_only_optional_emails` constraint, so a mandatory email cannot be
+silenced on any connection. While the directory is not mounted in production, neither
+are its emails sent there.
+
+To see them locally, run `npm run mail`, give somebody in the seed a start date of
+today, and wait for the hourly job (or restart the API after 08:00 UTC). Open Mailpit
+on a phone on the same network to check the mobile layout.
+
 ### Attachment storage
 
 Attachments go through the `Storage` interface in `server/src/core/storage`. In
