@@ -2,9 +2,19 @@
 
 import { type Actor, holdsAny, isSelf } from '../../core/auth/actor.js';
 import { type Decision, policyFor } from '../../core/auth/policy.js';
-import { READS_EVERY_RECORD } from '../../core/identity/role/roles.js';
+import {
+  MAINTAINS_EMPLOYEE_RECORDS,
+  PROVIDES_LOGINS,
+  READS_EVERY_RECORD,
+} from '../../core/identity/role/roles.js';
 
 const about = policyFor('directory');
+
+const ADMINISTRATION_IS_HRS =
+  'Employee records are added and changed by HR. Ask them to make the change.';
+
+const LOGINS_ARE_ADMINISTRATIVE =
+  'Logins are created by a system administrator or HR. Ask one of them.';
 
 export const directoryPolicy = {
   resource: about.resource,
@@ -88,6 +98,42 @@ export const directoryPolicy = {
           employeeId,
           'not their own record',
           'You can only change your own profile. Anything else on a record is kept by HR.',
+        );
+  },
+
+  /**
+   * Everything on the Administration tab: every record, leavers included, and adding,
+   * changing and moving people. HR's alone.
+   *
+   * Asked first by every administration route, before anybody is looked up, and refused
+   * openly with a 403: that the tab is HR's is no secret, and answering before any lookup
+   * means an id that is nobody is refused exactly as one that is somebody. NFR SEC 03.
+   */
+  administer(actor: Actor, employeeId: string | null = null): Decision {
+    return holdsAny(actor, ...MAINTAINS_EMPLOYEE_RECORDS)
+      ? about.allow(actor, 'administer', employeeId)
+      : about.refuseOpenly(
+          actor,
+          'administer',
+          employeeId,
+          'holds no role that maintains employee records',
+          ADMINISTRATION_IS_HRS,
+        );
+  },
+
+  /**
+   * The people waiting for a login, which is where HR hands a new record over to whoever
+   * creates logins. Theirs and HR's; refused openly to anybody else.
+   */
+  loginsToCreate(actor: Actor): Decision {
+    return holdsAny(actor, ...PROVIDES_LOGINS)
+      ? about.allow(actor, 'loginsToCreate')
+      : about.refuseOpenly(
+          actor,
+          'loginsToCreate',
+          null,
+          'holds no role that provides logins',
+          LOGINS_ARE_ADMINISTRATIVE,
         );
   },
 };

@@ -117,6 +117,17 @@ export interface Directory {
   departments: DepartmentInTheDirectory[];
 }
 
+/**
+ * The directory as one reader is sent it: the list, and which parts of the Administration tab
+ * they may open.
+ *
+ * The policies' answers rather than the reader's roles, as `/me/sections` is, so the page
+ * draws a tab without deciding anything. Every administration route still asks again.
+ */
+export interface DirectoryForReader extends Directory {
+  may: { administer: boolean; seeLoginsToCreate: boolean };
+}
+
 export interface DirectoryFacts {
   /** Everybody it might list; this decides who is current. */
   employees: readonly Employee[];

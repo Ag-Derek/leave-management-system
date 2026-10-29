@@ -10,7 +10,9 @@ import {
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { AccountMenu } from './AccountMenu';
+import { AdministrationPage } from './AdministrationPage';
 import { ColleagueProfilePage } from './ColleagueProfilePage';
+import { EmployeeRecordPage } from './EmployeeRecordPage';
 import { MyProfilePage } from './MyProfilePage';
 import { OrgChart } from './OrgChart';
 import { Avatar, chartAddress, fold, profileAddress, Today } from './person';
@@ -58,10 +60,14 @@ export function DirectoryPage({
   const [cameFrom, setCameFrom] = useState<'people' | 'chart'>('people');
 
   useEffect(() => {
-    if (address.view !== 'profile') {
+    if (address.view === 'people' || address.view === 'chart') {
       setCameFrom(address.view);
     }
   }, [address.view]);
+
+  /* The server's answer, from the list: whether to draw the Administration tab at all. */
+  const administers = directory?.may.administer ?? false;
+  const seesAdministration = administers || (directory?.may.seeLoginsToCreate ?? false);
 
   /* Back to the chart centres it on the person just looked at. */
   const back: BackTo =
@@ -167,7 +173,7 @@ export function DirectoryPage({
           />
         </header>
 
-        {address.view === 'profile' ? null : (
+        {address.view === 'profile' || address.view === 'record' ? null : (
           <nav className="directory-views" aria-label="Directory views">
             <a href="#/directory" aria-current={address.view === 'people' ? 'page' : undefined}>
               People
@@ -175,6 +181,14 @@ export function DirectoryPage({
             <a href={chartAddress()} aria-current={address.view === 'chart' ? 'page' : undefined}>
               Organisation chart
             </a>
+            {seesAdministration ? (
+              <a
+                href="#/directory/admin"
+                aria-current={address.view === 'administration' ? 'page' : undefined}
+              >
+                Administration
+              </a>
+            ) : null}
           </nav>
         )}
 
@@ -191,6 +205,13 @@ export function DirectoryPage({
           />
         ) : address.view === 'chart' ? (
           <OrgChart focusId={address.focusId} onSignedOut={onSignedOut} />
+        ) : address.view === 'administration' ? (
+          /* Drawn only once the server has said whose it is; the routes refuse anybody else. */
+          directory === undefined ? null : (
+            <AdministrationPage administer={administers} onSignedOut={onSignedOut} />
+          )
+        ) : address.view === 'record' ? (
+          <EmployeeRecordPage employeeId={address.recordId} onSignedOut={onSignedOut} />
         ) : mine ? (
           <MyProfilePage
             today={directory?.today ?? new Date().toISOString().slice(0, 10)}
@@ -409,13 +430,17 @@ function people(count: number): string {
 type DirectoryAddress =
   | { view: 'people' }
   | { view: 'chart'; focusId: string | undefined }
+  | { view: 'administration' }
+  /** A record HR has open, or a new one where `recordId` is undefined. */
+  | { view: 'record'; recordId: string | undefined }
   | { view: 'profile'; personId: string };
 
 /**
  * Which view the address is for: the list at `#/directory`, the chart at `#/directory/chart`
- * (centred on somebody at `#/directory/chart/<id>`), or a profile at `#/directory/<id>`.
+ * (centred on somebody at `#/directory/chart/<id>`), HR's tab at `#/directory/admin`, or a
+ * profile at `#/directory/<id>`.
  *
- * `chart` cannot be anybody's id: ids are numbers.
+ * `chart` and `admin` cannot be anybody's id: ids are numbers.
  */
 function useDirectoryAddress(): DirectoryAddress {
   const hash = useSyncExternalStore(subscribeToTheAddress, () => window.location.hash);
@@ -424,6 +449,13 @@ function useDirectoryAddress(): DirectoryAddress {
 
   if (first === 'chart') {
     return { view: 'chart', focusId: second === '' ? undefined : decoded(second) };
+  }
+
+  /* HR's tab, at `#/directory/admin`, a new record at `/new` and a record at `/<id>`. */
+  if (first === 'admin') {
+    return second === ''
+      ? { view: 'administration' }
+      : { view: 'record', recordId: second === 'new' ? undefined : decoded(second) };
   }
 
   return first === '' ? { view: 'people' } : { view: 'profile', personId: decoded(first) };

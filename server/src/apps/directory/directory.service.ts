@@ -7,8 +7,8 @@ import type { DepartmentRepository } from '../../core/organisation/department/de
 import { EmployeeNotFound } from '../../core/organisation/employee/employee.js';
 import type { EmployeeRepository } from '../../core/organisation/employee/employee.db.js';
 import {
-  type Directory,
   directoryFor,
+  type DirectoryForReader,
   type DirectoryProfile,
   entryFor,
   inBrief,
@@ -47,7 +47,7 @@ export class DirectoryService {
    * few hundred rows, and a search that asked the server on every keystroke would be slower
    * to answer the question it was asked than reading the list once.
    */
-  async read(actor: Actor): Promise<Directory> {
+  async read(actor: Actor): Promise<DirectoryForReader> {
     this.guard.enforce(directoryPolicy.read(actor));
 
     const today = this.today();
@@ -67,7 +67,13 @@ export class DirectoryService {
       this.photos.photosOf(ids),
     ]);
 
-    return directoryFor({ employees, departments, away, profiles, photos, today });
+    return {
+      ...directoryFor({ employees, departments, away, profiles, photos, today }),
+      may: {
+        administer: this.guard.permits(directoryPolicy.administer(actor)),
+        seeLoginsToCreate: this.guard.permits(directoryPolicy.loginsToCreate(actor)),
+      },
+    };
   }
 
   /**

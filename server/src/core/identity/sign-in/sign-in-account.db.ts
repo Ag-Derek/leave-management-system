@@ -102,6 +102,21 @@ export class SignInAccountRepository {
     return row === undefined ? undefined : toAccount(row);
   }
 
+  /** The logins several employees have, in no particular order. Anybody without one is absent. */
+  async findByEmployeeIds(employeeIds: readonly string[]): Promise<SignInAccount[]> {
+    if (employeeIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.db
+      .selectFrom('app_user')
+      .selectAll()
+      .where('employee_id', 'in', [...employeeIds])
+      .execute();
+
+    return rows.map(toAccount);
+  }
+
   async findByEmail(companyEmail: string): Promise<SignInAccount | undefined> {
     return (await this.credentialsByEmail(companyEmail))?.account;
   }

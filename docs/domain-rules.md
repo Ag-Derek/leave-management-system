@@ -214,6 +214,16 @@ report's pending leave follows them to the new manager (FR 07). A leaver who hea
 the organisation has nobody above them: their reports are left where they are, the
 job logs them, and the chart flags them for HR to place.
 
+**HR cannot set an exit date on somebody people still report to.** The
+Administration tab (`AdministrationService` in `server/src/apps/directory/`)
+refuses it with `StillHasReports`, naming who is still reporting, and offers to
+move some or all of them to another manager first. A report who has left does not
+count; a joiner who has not started does. Who takes over a team is HR's decision,
+so it is made before the exit is recorded rather than left to the job above, which
+still covers anything that reaches the record another way. The same tab offers only
+people at the company today as a manager, and refuses anybody else with
+`ManagerNotCurrent`.
+
 Three things enforce that, and it is worth knowing which covers what:
 
 | | Covers | Does not cover |

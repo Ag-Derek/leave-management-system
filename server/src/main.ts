@@ -230,6 +230,13 @@ const events = new LeaveEventRepository(db);
 /** NFR SEC 04. Shared by the attachment routes and the certificate purge. */
 const storage = createStorage();
 
+/**
+ * FR 01, FR 06, FR 07. The one door HR's changes to a record go through, built once and shared
+ * by the Administration tab and the job that moves a leaver's reports. The leave service is what
+ * a moved report's pending requests follow.
+ */
+const employeeRecords = new EmployeeService(employees, departments, patterns, guard, leaveRequests);
+
 const app = buildApp({
   guard,
   signIn: new SignInService(accounts, employees, roles, mailer, guard),
@@ -245,6 +252,7 @@ const app = buildApp({
   /** FR 32g. */
   events,
   employees,
+  employeeRecords,
   departments,
   types,
   years,
@@ -334,10 +342,8 @@ const reconciliation = new BalanceReconciliation(
 );
 const reminders = new DailyApproverReminders(leaveRequests, notifications);
 const undelivered = new UndeliveredNotices(notifications);
-/* The leave service is what a moved report's pending requests follow. FR 07. */
-const leaverReports = new LeaverReports(
-  new EmployeeService(employees, departments, patterns, guard, leaveRequests),
-);
+/* The same door HR's changes go through. FR 07. */
+const leaverReports = new LeaverReports(employeeRecords);
 
 /** Runs one job and logs its summary, or its failure. Undefined means nothing worth logging. */
 async function runJob(job: string, work: () => Promise<string | undefined>): Promise<void> {

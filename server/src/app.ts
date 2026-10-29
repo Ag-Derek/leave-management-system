@@ -76,6 +76,8 @@ import { DirectoryService } from './apps/directory/directory.service.js';
 import { directoryRoutes } from './apps/directory/routes.js';
 import type { PhotoRepository } from './apps/directory/photo.db.js';
 import { PhotoService } from './apps/directory/photo.service.js';
+import { AdministrationService } from './apps/directory/administration.service.js';
+import type { EmployeeService } from './core/organisation/employee/employee.service.js';
 import type { WorkPatternRepository } from './core/calendar/work-pattern/work-pattern.db.js';
 import { identify, insistOnANewPassword } from './core/http/identify.js';
 import { answerProblems, type FailureLog } from './core/http/problems.js';
@@ -100,6 +102,13 @@ export interface Application {
   /** FR 32g. Optional, so a test app without them has no event routes. */
   events?: LeaveEventRepository;
   employees: EmployeeRepository;
+  /**
+   * FR 01, FR 06. The door HR's changes to a record go through, handed in whole as
+   * `leaveRequests` is: it carries the company's email domains and the leave that follows a
+   * moved manager, neither of which this file should choose. Optional, so a test app without
+   * it has no Administration routes.
+   */
+  employeeRecords?: EmployeeService;
   /** FR 57. What the away calendar is scoped to, and what HR filters it by. */
   departments: DepartmentRepository;
   types: LeaveTypeRepository;
@@ -455,6 +464,20 @@ export function buildApp(parts: Application): Express {
           parts.photos === undefined
             ? undefined
             : new PhotoService(parts.guard, parts.photos, parts.employees, parts.storage),
+        /* HR's Administration tab. Every route asks `directoryPolicy.administer` itself. */
+        administration:
+          parts.employeeRecords === undefined || parts.patterns === undefined
+            ? undefined
+            : new AdministrationService(
+                parts.guard,
+                parts.employees,
+                parts.employeeRecords,
+                parts.departments,
+                parts.patterns,
+                parts.accounts,
+                parts.roles,
+                parts.audit,
+              ),
       }),
     );
   }
