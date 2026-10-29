@@ -74,7 +74,7 @@ export interface DailyEmailsRun {
   failed: number;
 }
 
-/** A cover to tell, once #226 names one. */
+/** A cover to tell, as leave's `CoverService` names one. #226. */
 export interface CoverNaming {
   absenteeId: string;
   coverId: string;
@@ -207,8 +207,8 @@ export class DirectoryEmailService implements EmployeeChangeSubscriber {
   }
 
   /**
-   * Tells somebody they have been named as a colleague's cover. For #226, which names cover;
-   * nothing calls it until then.
+   * Tells somebody they have been named as a colleague's cover. Called by leave's
+   * `CoverService` through its `CoverNotifier` port, once the cover is written. #226.
    */
   async tellCover(actor: Actor, naming: CoverNaming): Promise<void> {
     const absentee = await this.employees.findById(naming.absenteeId);

@@ -494,6 +494,13 @@ function profileAsJson(mine: MyProfile): unknown {
     /** Ten characters. NFR DAT 03. */
     startDate: mine.startDate,
     manager: mine.manager === null ? null : briefAsJson(mine.manager),
+    /** Whose leave they are covering. Ten characters each. NFR DAT 03. */
+    covering: mine.covering.map((one) => ({
+      person: briefAsJson(one.person),
+      from: one.from,
+      to: one.to,
+      agreed: one.agreed,
+    })),
   };
 }
 
@@ -541,6 +548,8 @@ function entryAsJson(entry: DirectoryEntry): unknown {
     description: entry.description,
     /** Null where they have none, and the screen draws their initials. */
     photo: photoAsJson(entry.photoId),
+    /** Who to contact instead while they are away. Null when they are in or named nobody. */
+    cover: entry.cover === null ? null : briefAsJson(entry.cover),
   };
 }
 

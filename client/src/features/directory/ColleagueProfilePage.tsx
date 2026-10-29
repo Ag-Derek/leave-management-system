@@ -10,7 +10,7 @@ import { day } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import type { BackTo } from './DirectoryPage';
-import { Avatar, chartAddress, profileAddress, Today } from './person';
+import { Avatar, chartAddress, Cover, profileAddress, Today } from './person';
 import { CopyButton } from './CopyButton';
 import { SendMessage } from './SendMessage';
 
@@ -149,13 +149,15 @@ function Profile({
           </p>
           {/* Somebody not here is neither in nor away. */}
           {notListed === null ? (
-            <p>
+            <p className="my-profile-today">
               <Today
                 person={colleague}
                 today={today}
                 inWords="In today"
                 awayWords="On leave, back"
               />
+              {/* #226. "On leave, back Mon 9 Nov · Contact Abena Sarpong instead." */}
+              <Cover person={colleague} words="Contact" />
             </p>
           ) : null}
         </div>

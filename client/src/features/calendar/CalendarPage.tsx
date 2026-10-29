@@ -173,6 +173,7 @@ export function CalendarPage({
             colleague={colleague}
             report={reports.get(colleague.employeeId)}
             named={calendar.department === null}
+            onSignedOut={onSignedOut}
           />
         ))}
       </ol>
@@ -262,11 +263,13 @@ function ColleagueCard({
   colleague,
   report,
   named,
+  onSignedOut,
 }: {
   colleague: Colleague;
   report: TeamMember | undefined;
   /** Whether the department is worth saying, which it is across all of them. */
   named: boolean;
+  onSignedOut: () => void;
 }) {
   const left = colleague.employmentStatus === 'TERMINATED';
 
@@ -302,7 +305,7 @@ function ColleagueCard({
           </ul>
         )
       ) : (
-        <Reports member={report} />
+        <Reports member={report} onSignedOut={onSignedOut} />
       )}
     </li>
   );

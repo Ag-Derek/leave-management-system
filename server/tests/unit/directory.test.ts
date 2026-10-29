@@ -202,6 +202,7 @@ describe('the directory', () => {
   it('carries nothing from the record but what the directory shows', () => {
     expect(Object.keys(directory.people[0]).sort()).toEqual([
       'backOn',
+      'cover',
       'department',
       'description',
       'employeeId',

@@ -1,13 +1,16 @@
 import type { BalanceLine, TeamBooking, TeamMember } from '../../api';
 import { days, inDays, period } from '../../format';
 import { Icon, iconForLeaveType } from '../../Icon';
+import { CoverButton } from '../cover/CoverEditor';
+import { mayNameCover } from '../cover/CoverFields';
 
 /**
  * What a direct report has left and what they have booked. FR 55, FR 56.
  *
  * Takes a `TeamMember` and never a `Colleague`: only `/api/me/team` may name a leave type.
+ * Their manager may see and change who covers each booking. #226.
  */
-export function Reports({ member }: { member: TeamMember }) {
+export function Reports({ member, onSignedOut }: { member: TeamMember; onSignedOut: () => void }) {
   return (
     <>
       <Figures lines={member.balances} />
@@ -51,7 +54,12 @@ export function Reports({ member }: { member: TeamMember }) {
       {member.booked.length === 0 ? null : (
         <ul className="away">
           {member.booked.map((booking) => (
-            <Booking key={booking.requestId} booking={booking} />
+            <Booking
+              key={booking.requestId}
+              booking={booking}
+              employeeId={member.employeeId}
+              onSignedOut={onSignedOut}
+            />
           ))}
         </ul>
       )}
@@ -89,7 +97,16 @@ function Figures({ lines }: { lines: BalanceLine[] }) {
 }
 
 /** One piece of live leave, in the server's own sentence. FR 56. */
-function Booking({ booking }: { booking: TeamBooking }) {
+function Booking({
+  booking,
+  employeeId,
+  onSignedOut,
+}: {
+  booking: TeamBooking;
+  /** Whose booking, so the cover picker leaves them out and suggests their manager. */
+  employeeId: string;
+  onSignedOut: () => void;
+}) {
   return (
     <li>
       <strong>{period(booking.from, booking.to)}</strong>
@@ -102,6 +119,17 @@ function Booking({ booking }: { booking: TeamBooking }) {
       <span className={`tag status is-${booking.status.toLowerCase()}`}>
         {booking.agreed ? 'agreed' : 'waiting to be decided'}
       </span>
+      {/* #226. A manager sees and changes who covers their report's leave. */}
+      {mayNameCover(true, booking.to) ? (
+        <>
+          {' '}
+          <CoverButton
+            requestId={booking.requestId}
+            employeeId={employeeId}
+            onSignedOut={onSignedOut}
+          />
+        </>
+      ) : null}
     </li>
   );
 }

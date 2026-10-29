@@ -2058,6 +2058,8 @@ export interface DirectoryPerson {
   description: string | null;
   /** Null where they have put none up, and their initials are drawn instead. */
   photo: PhotoLinks | null;
+  /** Who to contact instead, while they are away today and named somebody. #226. */
+  cover: PersonInBrief | null;
 }
 
 /** Somebody named on a profile: a manager, or one of their reports. */
@@ -2073,6 +2075,18 @@ export interface PersonInBrief {
 export interface MyProfile extends DirectoryPerson {
   startDate: string;
   manager: PersonInBrief | null;
+  /** Colleagues whose leave I have been named to cover, soonest first. #226. */
+  covering: CoveringFor[];
+}
+
+/** A colleague's leave I am covering. */
+export interface CoveringFor {
+  person: PersonInBrief;
+  /** Ten characters each. */
+  from: string;
+  to: string;
+  /** False while the leave is still being decided. */
+  agreed: boolean;
 }
 
 /** What I may change on my own record. An absent field is left alone; empty clears it. */
@@ -2504,6 +2518,85 @@ export async function quoteChange(requestId: string, from: string, to: string): 
     'GET',
     `/api/requests/${encodeURIComponent(requestId)}/change/quote?${query.toString()}`,
   );
+}
+
+/** ----------------------------------------------- cover while somebody is away. #226. */
+
+/** A colleague who could be named as cover. */
+export interface CoverColleague {
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  jobTitle: string | null;
+}
+
+/** One colleague covering one stretch of the leave. Ten characters each, inclusive. */
+export interface CoverPart {
+  coverId: string;
+  from: string;
+  to: string;
+}
+
+/** Days somebody named as cover is away themselves. A warning, not a refusal. */
+export interface CoverClash {
+  coverId: string;
+  from: string;
+  to: string;
+}
+
+/** The cover on one request. */
+export interface CoverPlan {
+  leaveRequestId: string;
+  absenteeId: string;
+  /** The leave's own dates. */
+  from: string;
+  to: string;
+  parts: (CoverPart & { cover: CoverColleague })[];
+  clashes: CoverClash[];
+  /** False once the leave has ended or is over. */
+  mayChange: boolean;
+}
+
+/** Who could cover for somebody: current staff only, and never them. */
+export interface CoverChoices {
+  colleagues: CoverColleague[];
+  /** Their manager, where they have one here today. */
+  suggestedId: string | null;
+}
+
+export async function coverFor(requestId: string): Promise<CoverPlan> {
+  return request<CoverPlan>('GET', `/api/requests/${encodeURIComponent(requestId)}/cover`);
+}
+
+/** Names the whole cover for a request, replacing what stood. No parts clears it. */
+export async function nameCover(requestId: string, parts: CoverPart[]): Promise<CoverPlan> {
+  return request<CoverPlan>('PUT', `/api/requests/${encodeURIComponent(requestId)}/cover`, {
+    parts,
+  });
+}
+
+/** Who could cover for somebody: me, unless an employee is named. */
+export async function coverChoices(employeeId?: string): Promise<CoverChoices> {
+  const query = employeeId === undefined ? '' : `?employeeId=${encodeURIComponent(employeeId)}`;
+
+  return request<CoverChoices>('GET', `/api/cover/colleagues${query}`);
+}
+
+/** The days a colleague is away themselves inside the days they would cover. */
+export async function coverClashes(input: {
+  employeeId?: string;
+  coverId: string;
+  from: string;
+  to: string;
+}): Promise<CoverClash[]> {
+  const query = new URLSearchParams({ coverId: input.coverId, from: input.from, to: input.to });
+
+  if (input.employeeId !== undefined) {
+    query.set('employeeId', input.employeeId);
+  }
+
+  return (await request<{ clashes: CoverClash[] }>('GET', `/api/cover/clashes?${query.toString()}`))
+    .clashes;
 }
 
 /** Changes a request's dates while nobody has decided it. A new request replaces the old. */

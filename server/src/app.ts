@@ -72,6 +72,9 @@ import { LeavePlanService } from './apps/leave/plan/plan.service.js';
 import { planRoutes } from './apps/leave/plan/routes.js';
 import { TeamCalendarService } from './apps/leave/team/team-calendar.service.js';
 import { AwayTodayService } from './apps/leave/team/away-today.service.js';
+import type { CoverRepository } from './apps/leave/cover/cover.db.js';
+import { CoverService } from './apps/leave/cover/cover.service.js';
+import { coverRoutes } from './apps/leave/cover/routes.js';
 import { DirectoryService } from './apps/directory/directory.service.js';
 import { directoryRoutes } from './apps/directory/routes.js';
 import type { PhotoRepository } from './apps/directory/photo.db.js';
@@ -191,6 +194,11 @@ export interface Application {
    * repositories for the reason `leaveRequests` is: it queues mail.
    */
   directoryEmails?: DirectoryEmailService;
+  /**
+   * #226. Who covers for somebody on leave. Optional, so a test app without it has no cover
+   * routes and the directory names nobody to contact instead.
+   */
+  covers?: CoverRepository;
   /** Where a 500 is written down. */
   failures?: FailureLog;
   /** Read from `SESSION_SECRET` when not given. */
@@ -461,6 +469,24 @@ export function buildApp(parts: Application): Express {
      Still being built, so not mounted in production: `/api/directory` answers 404 there
      until it is finished. The client hides the screen on the same terms. */
   if (process.env.NODE_ENV !== 'production') {
+    /* #226. Cover is named on leave and shown in the directory, and the colleague named is
+       told by the directory's emails, so it opens with the directory. Same port arrangement as
+       who is away: the directory is handed the service, and neither imports the other. */
+    const cover =
+      parts.covers === undefined
+        ? undefined
+        : new CoverService(
+            parts.guard,
+            parts.covers,
+            parts.requests,
+            parts.employees,
+            parts.directoryEmails,
+          );
+
+    if (cover !== undefined) {
+      app.use('/api', coverRoutes({ cover }));
+    }
+
     app.use(
       '/api',
       directoryRoutes({
@@ -472,6 +498,8 @@ export function buildApp(parts: Application): Express {
           parts.patterns === undefined
             ? undefined
             : new AwayTodayService(parts.requests, parts.employees, parts.patterns, parts.holidays),
+          undefined,
+          cover,
         ),
         photos:
           parts.photos === undefined
