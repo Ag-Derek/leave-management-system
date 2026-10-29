@@ -1,11 +1,11 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { changeMyProfile, isNotSignedIn, type MyProfile, myProfile } from '../../api';
-import { monthAndYear } from '../../format';
+import { monthAndYear, period } from '../../format';
 import { Icon } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import type { BackTo } from './DirectoryPage';
 import { EmailPreferences } from './EmailPreferences';
-import { Avatar, chartAddress, Today } from './person';
+import { Avatar, chartAddress, Cover, profileAddress, Today } from './person';
 import { PhotoEditor } from './PhotoEditor';
 import { DESCRIPTION_LIMIT, descriptionProblem, lengthOf, workMobileProblem } from './rules';
 
@@ -204,8 +204,9 @@ function Editor({
           <p className="my-profile-role">
             {[saved.jobTitle, saved.department.name].filter(Boolean).join(', ')}
           </p>
-          <p>
+          <p className="my-profile-today">
             <Today person={saved} today={today} inWords="In today" />
+            <Cover person={saved} words="Colleagues contact" />
           </p>
           <a className="view-in-chart" href={chartAddress(saved)}>
             <Icon name="stage" />
@@ -329,6 +330,33 @@ function Editor({
             Your reporting line also determines who approves your leave requests. If it is
             incorrect, please contact HR.
           </p>
+
+          {/* #226. Colleagues who named me to contact instead while they are away. */}
+          {saved.covering.length === 0 ? null : (
+            <div className="my-profile-fact">
+              <span>Covering for</span>
+              <ul className="my-profile-reports">
+                {saved.covering.map((one) => (
+                  <li key={`${one.person.employeeId}-${one.from}`}>
+                    <p className="my-profile-manager">
+                      <Avatar person={one.person} />
+                      <span>
+                        <a href={profileAddress(one.person)}>
+                          <strong>
+                            {one.person.firstName} {one.person.lastName}
+                          </strong>
+                        </a>
+                        <small>
+                          {period(one.from, one.to)}
+                          {one.agreed ? '' : ', if their leave is agreed'}
+                        </small>
+                      </span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       </div>
     </form>

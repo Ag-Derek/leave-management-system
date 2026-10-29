@@ -33,6 +33,8 @@ export const AUDITED_ENTITIES = [
   'approval_delegation',
   /** FR 61. */
   'notification_template',
+  /** #226. */
+  'leave_cover',
 ] as const;
 
 export type AuditedEntity = (typeof AUDITED_ENTITIES)[number];
@@ -54,6 +56,7 @@ export const AUDITED_ENTITY_LABELS: Readonly<Record<AuditedEntity, string>> = {
   leave_request: 'Leave request',
   organisation_setting: 'Policy setting',
   approval_delegation: 'Delegation',
+  leave_cover: 'Cover while away',
   notification_template: 'Email wording',
 };
 

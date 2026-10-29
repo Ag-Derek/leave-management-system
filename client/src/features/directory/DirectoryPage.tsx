@@ -15,7 +15,7 @@ import { ColleagueProfilePage } from './ColleagueProfilePage';
 import { EmployeeRecordPage } from './EmployeeRecordPage';
 import { MyProfilePage } from './MyProfilePage';
 import { OrgChart } from './OrgChart';
-import { Avatar, chartAddress, fold, profileAddress, Today } from './person';
+import { Avatar, chartAddress, Cover, fold, profileAddress, Today } from './person';
 
 /** How many rows the loading state draws, so the page does not jump far when the list lands. */
 const PLACEHOLDER_ROWS = 6;
@@ -398,6 +398,8 @@ function PeopleTable({ people, today }: { people: DirectoryPerson[]; today: stri
               </td>
               <td className="directory-today">
                 <Today person={person} today={today} />
+                {/* #226. Who to go to while they are away. */}
+                <Cover person={person} />
               </td>
             </tr>
           ))}

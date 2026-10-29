@@ -35,6 +35,33 @@ export function Today({
 }
 
 /**
+ * Who to contact instead of somebody away today, as a link to their profile. Nothing where
+ * they are in or named nobody: the server sends a cover only while the leave is under way.
+ */
+export function Cover({
+  person,
+  words = 'contact',
+}: {
+  person: Pick<DirectoryPerson, 'cover'>;
+  /** What comes before the name: "contact" in the list, "Contact" leading a sentence. */
+  words?: string;
+}) {
+  if (person.cover === null) {
+    return null;
+  }
+
+  return (
+    <span className="cover-note">
+      {words}{' '}
+      <a href={profileAddress(person.cover)}>
+        {person.cover.firstName} {person.cover.lastName}
+      </a>{' '}
+      instead
+    </span>
+  );
+}
+
+/**
  * Somebody's photo in a circle, or their initials where they have none. `aria-hidden`; the
  * name is beside it.
  *

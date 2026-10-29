@@ -7,6 +7,8 @@ import type { DepartmentRepository } from '../../core/organisation/department/de
 import { EmployeeNotFound } from '../../core/organisation/employee/employee.js';
 import type { EmployeeRepository } from '../../core/organisation/employee/employee.db.js';
 import {
+  coverOf,
+  coveringFor,
   directoryFor,
   type DirectoryForReader,
   type DirectoryProfile,
@@ -20,6 +22,7 @@ import {
   type StaffChart,
   staffChartFor,
   type WhoIsAway,
+  type WhoIsCovering,
   whyNotListed,
 } from './directory.js';
 import { directoryPolicy } from './policy.js';
@@ -38,6 +41,8 @@ export class DirectoryService {
     private readonly away?: WhoIsAway,
     /** Today, in UTC, which is the day the database's `current_date` is having. NFR DAT 03. */
     private readonly today: () => CalendarDate = () => calendarDateIn(new Date(), 'UTC'),
+    /** Who covers for whom, from leave. Absent, nobody names cover. #226. */
+    private readonly covering?: WhoIsCovering,
   ) {}
 
   /**
@@ -54,10 +59,11 @@ export class DirectoryService {
 
     /* Everybody, not `activeOnly`: a leaver already marked TERMINATED is still listed until
        their exit date passes, and `isCurrentOn` is what decides that. */
-    const [everybody, departments, away] = await Promise.all([
+    const [everybody, departments, away, covers] = await Promise.all([
       this.employees.list(),
       this.departments.list(),
       this.away === undefined ? [] : this.away.awayOn(today),
+      this.covering === undefined ? [] : this.covering.coversOn(today),
     ]);
 
     const employees = everybody.filter((one) => isCurrentOn(one, today));
@@ -68,7 +74,7 @@ export class DirectoryService {
     ]);
 
     return {
-      ...directoryFor({ employees, departments, away, profiles, photos, today }),
+      ...directoryFor({ employees, departments, away, profiles, photos, covers, today }),
       may: {
         administer: this.guard.permits(directoryPolicy.administer(actor)),
         seeLoginsToCreate: this.guard.permits(directoryPolicy.loginsToCreate(actor)),
@@ -117,21 +123,30 @@ export class DirectoryService {
 
     this.guard.enforce(directoryPolicy.readProfile(actor, employee.id, reason === null));
 
-    /* Their own photo, and the photos of whoever is on their reporting line. */
-    const named = everybody
-      .filter(
-        (one) =>
-          one.id === employee.id || one.id === employee.managerId || one.managerId === employee.id,
-      )
-      .map((one) => one.id);
-
-    const [department, away, profiles, photos] = await Promise.all([
+    /* Nobody who is not here is away, or covered for. */
+    const [department, away, covers, profiles] = await Promise.all([
       this.departments.findById(employee.departmentId),
-      /* Nobody who is not here is away. */
       this.away === undefined || reason !== null ? [] : this.away.awayOn(today),
+      this.covering === undefined || reason !== null ? [] : this.covering.coversOn(today),
       this.employees.profilesOf([employee.id]),
-      this.photos.photosOf(named).then(photoIdsOf),
     ]);
+
+    const coverId = covers.find((one) => one.employeeId === employee.id)?.coverId;
+
+    /* Their own photo, and the photos of whoever is on their reporting line or covering. */
+    const photos = await this.photos
+      .photosOf(
+        everybody
+          .filter(
+            (one) =>
+              one.id === employee.id ||
+              one.id === employee.managerId ||
+              one.managerId === employee.id ||
+              one.id === coverId,
+          )
+          .map((one) => one.id),
+      )
+      .then(photoIdsOf);
 
     return {
       ...entryFor(
@@ -140,6 +155,7 @@ export class DirectoryService {
         away.find((one) => one.employeeId === employee.id)?.backOn,
         profiles[0],
         photos.get(employee.id),
+        coverOf(employee.id, covers, everybody, today, photos),
       ),
       ...reportingLineOf(employee, everybody, today, photos),
       notListed:
@@ -165,15 +181,30 @@ export class DirectoryService {
 
     const today = this.today();
 
-    const [department, away, profiles, manager, photos] = await Promise.all([
+    const [department, away, covers, duties, profiles] = await Promise.all([
       this.departments.findById(employee.departmentId),
       this.away === undefined ? [] : this.away.awayOn(today),
+      this.covering === undefined ? [] : this.covering.coversOn(today),
+      this.covering === undefined ? [] : this.covering.coveringFrom(employee.id, today),
       this.employees.profilesOf([employee.id]),
-      employee.managerId === null ? undefined : this.employees.findById(employee.managerId),
-      this.photos
-        .photosOf(employee.managerId === null ? [employee.id] : [employee.id, employee.managerId])
-        .then(photoIdsOf),
     ]);
+
+    /* Their manager, whoever covers for them today, and whoever they are covering for. */
+    const coverId = covers.find((one) => one.employeeId === employee.id)?.coverId;
+    const named = [
+      ...new Set(
+        [employee.managerId, coverId, ...duties.map((one) => one.absenteeId)].filter(
+          (id): id is string => id !== null && id !== undefined,
+        ),
+      ),
+    ];
+
+    const [others, photos] = await Promise.all([
+      this.employees.findAllById(named),
+      this.photos.photosOf([employee.id, ...named]).then(photoIdsOf),
+    ]);
+
+    const manager = others.find((one) => one.id === employee.managerId);
 
     return {
       ...entryFor(
@@ -182,9 +213,11 @@ export class DirectoryService {
         away.find((one) => one.employeeId === employee.id)?.backOn,
         profiles[0],
         photos.get(employee.id),
+        coverOf(employee.id, covers, others, today, photos),
       ),
       startDate: employee.startDate,
       manager: manager === undefined ? null : inBrief(manager, photos),
+      covering: coveringFor(duties, others, today, photos),
     };
   }
 

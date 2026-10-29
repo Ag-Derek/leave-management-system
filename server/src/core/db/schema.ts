@@ -583,6 +583,24 @@ export interface ApprovalDelegationTable {
   nominated_at: Timestamp;
 }
 
+/** Who to contact instead, for part of somebody's leave. #226. */
+export interface LeaveCoverTable {
+  id: Generated<string>;
+  leave_request_id: ColumnType<string, string, never>;
+  cover_employee_id: ColumnType<string, string, never>;
+  /** Inclusive at both ends, and inside the leave. NFR DAT 03. */
+  starts_on: ColumnType<string, string, never>;
+  ends_on: ColumnType<string, string, never>;
+  named_by: ColumnType<string, never, never>;
+  named_by_employee_id: ColumnType<string | null, never, never>;
+  named_at: ColumnType<Date, never, never>;
+  /* Ended. The only update the row takes: the writer says why, the trigger stamps the rest. */
+  ended_at: ColumnType<Date | null, never, never>;
+  ended_by: ColumnType<string | null, never, never>;
+  ended_by_employee_id: ColumnType<string | null, never, never>;
+  ended_because: ColumnType<'LEAVE_ENDED' | 'REPLACED' | null, never, 'REPLACED'>;
+}
+
 /** What the company itself is configured as. FR 48c, §4.3.1. */
 export interface OrganisationSettingTable {
   id: Generated<string>;
@@ -675,6 +693,8 @@ export interface Database {
   employee: EmployeeTable;
   holiday: HolidayTable;
   leave_balance: LeaveBalanceTable;
+  /** #226. */
+  leave_cover: LeaveCoverTable;
   leave_entitlement_event: LeaveEntitlementEventTable;
   leave_entitlement_rule: LeaveEntitlementRuleTable;
   leave_ledger_entry: LeaveLedgerEntryTable;

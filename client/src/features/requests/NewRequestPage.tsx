@@ -3,6 +3,7 @@ import {
   askForLeave,
   type FormRule,
   isNotSignedIn,
+  nameCover,
   type Quote,
   type QuoteWarning,
   type RequestableLeaveType,
@@ -16,6 +17,7 @@ import { days, inDays, period, sentenceCase } from '../../format';
 import { Icon, iconForLeaveType } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { Evidence } from './Attachments';
+import { COVER_OPEN, CoverFields, type CoverDraft, NO_COVER, partsOf } from '../cover/CoverFields';
 
 /**
  * How long a reason may be.
@@ -29,6 +31,9 @@ const REASON_LIMIT = 500;
 
 /** What an input the refusal named points a screen reader at. */
 const REFUSAL_ID = 'ask-refusal';
+
+/** #226. Nobody was named, the cover was named, or the server's refusal of it. */
+type CoverOutcome = 'NONE' | 'NAMED' | Problem;
 
 /**
  * Asking for leave, told the rules while you fill it in. FR 10, FR 11, FR 13, FR 17, FR 32f.
@@ -71,6 +76,13 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
    * acknowledgement above — a certificate is about the person, not about the period.
    */
   const [evidence, setEvidence] = useState<string[]>([]);
+  /** #226. Who colleagues contact while this leave is under way. Optional. */
+  const [cover, setCover] = useState<CoverDraft>(NO_COVER);
+  /**
+   * What became of the cover once the request was in. Named straight after it, so a refusal
+   * leaves the request standing and says where to name it instead.
+   */
+  const [coverOutcome, setCoverOutcome] = useState<CoverOutcome>('NONE');
 
   const [quote, setQuote] = useState<Quote | undefined>(undefined);
   const [quoteProblem, setQuoteProblem] = useState<Problem | undefined>(undefined);
@@ -190,7 +202,22 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
       lateEntryReason,
       evidence,
     })
-      .then((next) => {
+      .then(async (next) => {
+        /* #226. The cover goes on the request it is for, once there is one. A refusal does not
+           take the request back: it is in, and the cover can be named from My requests. */
+        const parts = partsOf(cover, next.from, next.to);
+
+        if (COVER_OPEN && parts.length > 0) {
+          setCoverOutcome(
+            await nameCover(next.requestId, parts).then(
+              () => 'NAMED' as const,
+              (error: unknown) => problemFrom(error),
+            ),
+          );
+        } else {
+          setCoverOutcome('NONE');
+        }
+
         setSubmitted(next);
 
         /* Asked for from a plan, so the plan has done its job. A failure here leaves the plan
@@ -211,7 +238,7 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
       .finally(() => {
         setAsking(false);
       });
-  }, [leaveTypeId, from, to, reason, acknowledged, lateEntryReason, evidence, onSignedOut]);
+  }, [leaveTypeId, from, to, reason, acknowledged, lateEntryReason, evidence, cover, onSignedOut]);
 
   const startAgain = useCallback(() => {
     setSubmitted(undefined);
@@ -223,6 +250,8 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
     /* The files that went on the last request went with it. What is waiting now is whatever
        the panel reads back when it comes round again. FR 13. */
     setEvidence([]);
+    setCover(NO_COVER);
+    setCoverOutcome('NONE');
     setQuote(undefined);
     setQuoteProblem(undefined);
     setRefusal(undefined);
@@ -245,6 +274,7 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
           submitted={submitted}
           type={chosen}
           perOccasion={quote?.perOccasion ?? null}
+          cover={coverOutcome}
           onStartAgain={startAgain}
         />
       </div>
@@ -398,6 +428,22 @@ export function NewRequestPage({ onSignedOut }: { onSignedOut: () => void }) {
                 attach something — whether one is needed is in the rules above, written by
                 the server. */}
             <Evidence disabled={asking} onChange={setEvidence} onSignedOut={onSignedOut} />
+
+            {/* #226. Optional. Shown in the directory while the leave is agreed and under way,
+                and whoever is named is emailed. */}
+            {COVER_OPEN ? (
+              <fieldset className="cover-section">
+                <legend>Who covers while you are away (optional)</legend>
+                <CoverFields
+                  from={from}
+                  to={to}
+                  draft={cover}
+                  disabled={asking}
+                  onChange={setCover}
+                  onSignedOut={onSignedOut}
+                />
+              </fieldset>
+            ) : null}
 
             {/* FR 17. On the left, because it is something to decide rather than
                 something the system is saying. Shown exactly when the server warns. */}
@@ -684,12 +730,15 @@ function Asked({
   submitted,
   type,
   perOccasion,
+  cover,
   onStartAgain,
 }: {
   submitted: Submitted;
   type: RequestableLeaveType | undefined;
   /** FR 32g. Set for per-occasion leave, whose days arrive on approval. */
   perOccasion: number | null;
+  /** #226. */
+  cover: CoverOutcome;
   onStartAgain: () => void;
 }) {
   return (
@@ -716,6 +765,21 @@ function Asked({
         <p className="muted">
           The days for this occasion are added to your balance when it is approved.
         </p>
+      )}
+
+      {/* #226. The request is in either way; a refusal of the cover says where to try again. */}
+      {cover === 'NONE' ? null : cover === 'NAMED' ? (
+        <p>
+          Your cover has been told. While this leave is under way, colleagues will be pointed to
+          them.
+        </p>
+      ) : (
+        <div className="notice warning" role="alert">
+          <p>The leave was asked for, but the cover was not saved: {cover.what}</p>
+          <p>
+            Name it from <a href="#/requests">My requests</a>.
+          </p>
+        </div>
       )}
 
       <div className="dates">

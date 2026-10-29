@@ -4911,6 +4911,47 @@ what was only on it is drawn inside the card of anybody who reports to the reade
 
 ---
 
+### Who covers while somebody is away
+
+**Cover belongs to a leave request: who to contact instead, and for which of its days.**
+#226. One person for the whole leave, or different people for different parts of it, never
+two on one day. `leave_cover` holds it, and `CoverService` in `server/src/apps/leave/cover/`
+is the door.
+
+**Named by the person, their manager or HR, and nobody else.** `coverPolicy.name` admits
+the same three as `directoryPolicy.tellCover`, so the email that follows is never refused by
+its own guard. A colleague probing a request id gets the silent 404 a request that is nobody
+gets; a system administrator, who may read it, is told openly why they may not change it.
+
+**The picker offers current staff only, and never the person going.** The server refuses
+the rest anyway: yourself with `CoverIsTheAbsentee`, and anybody not at the company today,
+or leaving before the cover ends, with `CoverNotAtTheCompany`.
+
+**A cover who is on leave themselves is a warning, not a refusal.** Their live leave over
+those days comes back as `clashes`, on the form as it is chosen and on the saved cover. It is
+still the person's call.
+
+**The colleague named is told, once.** `DirectoryEmailService.tellCover` queues the
+`COVER_NAMED` email after the cover is written, keyed on the cover row, so saving the same
+cover again sends nothing. Leave reaches it through the `CoverNotifier` port, wired in
+`app.ts`, so leave imports nothing of the directory.
+
+**Shown only while the leave is agreed and under way.** `CoverRepository.inForceOn` is the
+one place that is decided: `APPROVED`, today inside both the cover and the leave, not ended.
+The directory reads it through its `WhoIsCovering` port, as it reads `WhoIsAway`, and draws
+"contact … instead" beside the away tag in the list and on the profile. A cover who has since
+left the company is not shown. The cover sees what they are covering, and when, on their own
+profile, including leave still being decided.
+
+**Leave that ends takes its cover with it, in the same transaction.** The
+`leave_request_ends_its_cover` trigger ends every cover on a request the moment it becomes
+`WITHDRAWN`, `CANCELLED` or `REFUSED`, whichever door did it. A change of dates is a
+withdrawal and a replacement, so `leave_request_keeps_its_cover` carries the cover to the new
+request, cut to the new dates. Cover rows are only ever ended, never edited or deleted, and
+are audited.
+
+---
+
 ### The leaver figure
 
 **What somebody is owed on their last day, with the sum written out.** FR 37a, §8.6d, §8.7.

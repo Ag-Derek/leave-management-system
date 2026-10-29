@@ -7131,3 +7131,127 @@ button.linkish.file-name {
   width: 0.95rem;
   height: 0.95rem;
 }
+
+/* ------------------------------------------------ cover while somebody is away. #226. */
+
+/* "contact Abena Sarpong instead", beside the away tag. */
+.cover-note {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.directory-today .cover-note {
+  display: block;
+  margin: 0.25rem 0 0;
+}
+
+.my-profile-today {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.my-profile-today .cover-note {
+  margin-left: 0;
+  font-size: inherit;
+}
+
+.cover-section {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: var(--gap);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+}
+
+.cover-section legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.cover-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cover-fields label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.cover-parts {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cover-part {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: end;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+}
+
+.cover-part > label,
+.cover-part > .dates,
+.cover-part > .notice {
+  grid-column: 1 / -1;
+}
+
+.cover-part > .action-icon {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.cover-part > label {
+  grid-column: 1;
+}
+
+.cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+/* An icon has no size of its own; these are the size the modal's own buttons give theirs. */
+.cover-actions .linkish {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-soft);
+}
+
+/* Blue, on a tint of itself, so each one reads as something to press. */
+.cover-actions .linkish:hover:not(:disabled) {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--card));
+}
+
+.cover-actions .linkish:disabled {
+  color: var(--ink-soft);
+  background: var(--line);
+}
+
+.cover-actions .linkish svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.cover-named {
+  margin: 0;
+  padding-left: 1.2rem;
+}

@@ -28,6 +28,32 @@ export interface WhoIsAway {
   awayOn(day: CalendarDate): Promise<AwayToday[]>;
 }
 
+/** Somebody on agreed leave today, and the colleague they named to contact instead. #226. */
+export interface CoverToday {
+  employeeId: string;
+  coverId: string;
+}
+
+/** Leave somebody has been named to cover, cut to what is left of it. #226. */
+export interface CoverDuty {
+  absenteeId: string;
+  from: CalendarDate;
+  to: CalendarDate;
+  /** Whether the leave has been agreed, or is still being decided. */
+  agreed: boolean;
+}
+
+/**
+ * Who is covering for whom. The port the leave app fills, as it does {@link WhoIsAway}, and on
+ * the same terms: people and dates cross it, and nothing about the leave itself.
+ */
+export interface WhoIsCovering {
+  /** Agreed leave under way on the day, and who covers it. */
+  coversOn(day: CalendarDate): Promise<CoverToday[]>;
+  /** What one person has been named to cover from the day on, soonest first. */
+  coveringFrom(employeeId: string, day: CalendarDate): Promise<CoverDuty[]>;
+}
+
 /** A department, as the directory names one. */
 export interface DepartmentInTheDirectory {
   id: string;
@@ -49,6 +75,8 @@ export interface DirectoryEntry {
   description: string | null;
   /** Their photo, where they have put one up. Null is shown as their initials. */
   photoId: string | null;
+  /** Who to contact instead, while they are away today and named somebody. #226. */
+  cover: PersonInBrief | null;
 }
 
 /** Whose photo is which: the one fact about a photo the directory carries. */
@@ -71,6 +99,16 @@ export interface PhotoLookup {
 export interface MyProfile extends DirectoryEntry {
   startDate: CalendarDate;
   manager: PersonInBrief | null;
+  /** Colleagues whose leave they have been named to cover, soonest first. #226. */
+  covering: CoveringFor[];
+}
+
+/** Somebody's leave I have been named to cover. #226. */
+export interface CoveringFor {
+  person: PersonInBrief;
+  from: CalendarDate;
+  to: CalendarDate;
+  agreed: boolean;
 }
 
 /** Somebody named on a profile: their manager, or one of their reports. */
@@ -137,6 +175,8 @@ export interface DirectoryFacts {
   profiles: readonly EmployeeProfile[];
   /** Who has a photo up. Absent, nobody does. */
   photos?: readonly PhotoOnRecord[];
+  /** Who covers for whom today. Absent, nobody names cover. */
+  covers?: readonly CoverToday[];
   today: CalendarDate;
 }
 
@@ -171,6 +211,7 @@ export function entryFor(
   backOn: CalendarDate | undefined,
   profile: EmployeeProfile | undefined,
   photoId?: string,
+  cover?: PersonInBrief,
 ): DirectoryEntry {
   return {
     employeeId: employee.id,
@@ -188,7 +229,42 @@ export function entryFor(
     workMobile: profile?.workMobile ?? null,
     description: profile?.description ?? null,
     photoId: photoId ?? null,
+    /* Only while they are away: cover for somebody who is in is nobody to contact. */
+    cover: backOn === undefined ? null : (cover ?? null),
   };
+}
+
+/**
+ * Who to contact instead of this person today, where they named somebody who is at the
+ * company today. A cover who has since left is nobody to send a colleague to.
+ */
+export function coverOf(
+  employeeId: string,
+  covers: readonly CoverToday[],
+  everybody: readonly Employee[],
+  today: CalendarDate,
+  photos: ReadonlyMap<string, string> = new Map(),
+): PersonInBrief | undefined {
+  const coverId = covers.find((one) => one.employeeId === employeeId)?.coverId;
+  const cover = everybody.find((one) => one.id === coverId);
+
+  return cover === undefined || !isCurrentOn(cover, today) ? undefined : inBrief(cover, photos);
+}
+
+/** Whose leave somebody is covering, leaving out anybody who is no longer at the company. */
+export function coveringFor(
+  duties: readonly CoverDuty[],
+  absentees: readonly Employee[],
+  today: CalendarDate,
+  photos: ReadonlyMap<string, string> = new Map(),
+): CoveringFor[] {
+  return duties.flatMap((duty) => {
+    const absentee = absentees.find((one) => one.id === duty.absenteeId);
+
+    return absentee === undefined || !isCurrentOn(absentee, today)
+      ? []
+      : [{ person: inBrief(absentee, photos), from: duty.from, to: duty.to, agreed: duty.agreed }];
+  });
 }
 
 /** Each person's photo id, by whose it is. */
@@ -202,9 +278,9 @@ export function directoryFor(facts: DirectoryFacts): Directory {
   const backOn = new Map(facts.away.map((one) => [one.employeeId, one.backOn]));
   const profiles = new Map(facts.profiles.map((one) => [one.employeeId, one]));
   const photos = photoIdsOf(facts.photos);
+  const current = facts.employees.filter((employee) => isCurrentOn(employee, facts.today));
 
-  const people = facts.employees
-    .filter((employee) => isCurrentOn(employee, facts.today))
+  const people = current
     .map((employee) =>
       entryFor(
         employee,
@@ -212,6 +288,7 @@ export function directoryFor(facts: DirectoryFacts): Directory {
         backOn.get(employee.id),
         profiles.get(employee.id),
         photos.get(employee.id),
+        coverOf(employee.id, facts.covers ?? [], current, facts.today, photos),
       ),
     )
     .sort(bySurname);

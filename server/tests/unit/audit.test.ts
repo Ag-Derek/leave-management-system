@@ -99,6 +99,8 @@ describe('the entities an entry can be about', () => {
          and when they could. */
       'approval_delegation',
       'notification_template',
+      /* #226. Who colleagues are sent to while somebody is away, and who said so. */
+      'leave_cover',
     ]);
   });
 });

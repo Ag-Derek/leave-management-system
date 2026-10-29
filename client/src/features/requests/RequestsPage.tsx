@@ -19,6 +19,8 @@ import { Icon, iconForLeaveType } from '../../Icon';
 import { Notice, type Problem, problemFrom } from '../../problem';
 import { AttachedFiles } from './Attachments';
 import { ChangeDates } from './ChangeDates';
+import { CoverButton } from '../cover/CoverEditor';
+import { mayNameCover } from '../cover/CoverFields';
 
 /** My request history. FR 54, FR 41, FR 39. */
 export function RequestsPage({ onSignedOut }: { onSignedOut: () => void }) {
@@ -127,6 +129,7 @@ export function RequestHistory({
               key={entry.requestId}
               entry={entry}
               own={own}
+              employeeId={employeeId}
               onSignedOut={onSignedOut}
               onWithdrawn={again}
             />
@@ -151,23 +154,36 @@ export function RequestHistory({
 function RequestCard({
   entry,
   own,
+  employeeId,
   onSignedOut,
   onWithdrawn,
 }: {
   entry: RequestEntry;
   /** The reader's own leave, rather than HR looking at somebody's. */
   own: boolean;
+  /** Whose history this is, where it is not the reader's own. */
+  employeeId?: string;
   onSignedOut: () => void;
   onWithdrawn: () => void;
 }) {
   const [changing, setChanging] = useState(false);
   const live = LIVE.includes(entry.status);
   const extendable = own && live && isSick(entry);
+  /* #226. Who colleagues contact while this leave is under way. */
+  const coverable = mayNameCover(live, entry.to);
 
   /* The buttons that sit left of Withdraw, or on their own where there is no Withdraw. */
   const leading =
-    entry.datesCanChange || extendable ? (
+    entry.datesCanChange || extendable || coverable ? (
       <>
+        {coverable ? (
+          <CoverButton
+            requestId={entry.requestId}
+            employeeId={employeeId}
+            onSignedOut={onSignedOut}
+          />
+        ) : null}
+
         {entry.datesCanChange ? (
           <EditButton
             label={`Edit the request for ${period(entry.from, entry.to)}`}

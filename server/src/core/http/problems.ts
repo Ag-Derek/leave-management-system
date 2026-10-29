@@ -446,6 +446,13 @@ const REFUSED_BY_A_RULE: Readonly<Record<string, number>> = {
   /** Choosing somebody to move, or somebody else to move them to, is the fix. */
   NobodyToReassign: 400,
   CannotTakeTheirOwnReports: 400,
+
+  /** #226. Choosing somebody else is the fix. */
+  CoverIsTheAbsentee: 400,
+  /** #226. 409: the colleague has left, or leaves before the cover ends. */
+  CoverNotAtTheCompany: 409,
+  /** #226. 409: the leave has ended, or is over. */
+  CoverCannotBeChanged: 409,
 };
 
 /**
